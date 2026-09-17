@@ -3,56 +3,70 @@ title: 转账
 description: 转账钱包上分与下分。
 ---
 
-适用于转账钱包。`sn` 为幂等键：同一业务事件对应唯一 `sn`。
-
-| 字段 | 约束 |
-|---|---|
-| `sn` | 英数与 `_` `-`，长度 6–120 |
-| `acc` | 玩家账号，不含前缀 |
-| `amount` | 不得为 0。正数为上分（商户 → 平台），负数为下分（平台 → 商户） |
-| 时间 | Unix 秒 |
+适用于转账钱包。`sn` 为幂等键。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 见页末。
 
 ## POST `/transfer/add`
 
-```json
-{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
-```
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `sn` | 是 | string | 商户订单号，6–120 |
+| `acc` | 是 | string | 玩家账号，不含前缀 |
+| `amount` | 是 | number | 不为 0。正数上分，负数下分 |
+</Card>
 
-下分例：`"amount": -50`。
-
-```json
-{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
-```
-
-`balance` 为该笔完成后之平台余额。
-
-| code | 语义 | 处理 |
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
 |---|---|---|
-| `OK` | 入账完成 | 不得重用该 `sn` |
-| `TRANSFER_SN_EXIST` | 该 `sn` 已成功入账 | 调用 `/transfer/check`。非失败 |
-| `BALANCE_INSUFFICIENT` | 下分余额不足 | 未入账 |
-| `ACC_NOT_FOUND` | 玩家不存在 | 未入账 |
+| `currency` | string | 币种 |
+| `balance` | number | 本笔完成后的平台余额 |
 
-HTTP 500 或连接中断表示结果未决。须以**原 `sn`** 调用 `/transfer/check`：查得记录即已入账；`TRANSFER_NOT_FOUND` 后方可使用新 `sn`。于 500 后立即更换 `sn` 重送可导致重复入账。
+| code | 说明 |
+|---|---|
+| `TRANSFER_SN_EXIST` | 该 `sn` 已入账；调用 `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | 下分余额不足 |
+| `ACC_NOT_FOUND` | 玩家不存在 |
+
+HTTP 500：以原 `sn` 调用 `/transfer/check`。
+</Card>
 
 ## POST `/transfer/check`
 
-```json
-{ "sn": "T20260917-0001", "acc": "jordan" }
-```
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `sn` | 是 | string | |
+| `acc` | 是 | string | |
+</Card>
 
-无记录时 `code` 为 `TRANSFER_NOT_FOUND`。
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | 转账单号 |
+| `amount` | number | 金额 |
+| `balance` | number | 该笔完成当时的平台余额 |
+| `created_at` | integer | Unix 秒 |
+| `agent` | object | 商户摘要 |
+| `member` | object | 玩家摘要 |
+
+无记录：`TRANSFER_NOT_FOUND`。
+</Card>
 
 ## POST `/transfer/list`
 
-速率限制：每商户每分钟 10 次。
+限流：每商户每分钟 10 次。
 
-| 字段 | 必填 | 约束 |
+<Card title="响应" icon="arrow-down-to-bracket">
+`row_count`、`page_count`（integer），`list[]`：`sn`、`amount`、`balance`、`created_at`、`agent`、`member`。
+</Card>
+
+## 对象 `agent`／`member`
+
+| 字段 | 类型 | 说明 |
 |---|---|---|
-| `page` | 是 | ≥ 1 |
-| `perpage` | 是 | 1–100 |
-| `start_at` | 是 | Unix 秒 |
-| `end_at` | 是 | 须大于 `start_at` |
-| `acc` | 否 | |
-
-响应 `data`：`list`、`row_count`、`page_count`。
+| `id` | integer | 内部标识 |
+| `acc` | string | 完整账号 |
+| `name` | string | 显示名称 |
+| `player_type` | string | `AGENT` 或 `MEMBER` |
+| `currency` | string | 币种 |
+| `sub_role` | string | 子角色，可为空字符串 |

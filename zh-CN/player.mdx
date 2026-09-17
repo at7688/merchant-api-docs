@@ -3,18 +3,25 @@ title: 玩家
 description: 创建、余额、登录、登出。
 ---
 
-内层 `acc` 不含代理前缀。时间字段为 Unix 秒。
+内层 `acc` 不含代理前缀。时间为 Unix 秒。成功时外层报文见 [传输协议](/zh-CN/protocol)，下列仅列 `data`。
 
 ## POST `/player/add`
 
-| 字段 | 必填 | 类型 | 约束 |
-|---|---|---|---|
-| `acc` | 是 | string | 英数，6–60，存储为小写 |
-| `name` | 是 | string | 长度 ≤ 30 |
+`ACC_EXIST` 表示账号已存在。
 
-```json
-{ "acc": "jordan", "name": "Amy" }
-```
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `acc` | 是 | string | 玩家账号。英数 6–60，存储为小写 |
+| `name` | 是 | string | 显示名称。长度 ≤ 30 |
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `acc` | string | 平台完整账号 `{agent_acc}_{acc}` |
+| `player_acc` | string | 不含前缀 |
+| `player_id` | integer | 平台内部标识 |
 
 ```json
 {
@@ -22,50 +29,56 @@ description: 创建、余额、登录、登出。
   "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }
 }
 ```
-
-后续请求仍传送 `jordan`。`ACC_EXIST` 表示账号已存在。
+</Card>
 
 ## POST `/player/balance`
 
 查询平台余额。适用于转账钱包。
 
-| 字段 | 必填 | 类型 | 约束 |
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
 |---|---|---|---|
-| `acc` | 是 | string | 英数，6–60 |
+| `acc` | 是 | string | 玩家账号 |
+</Card>
 
-响应 `data`：`currency`、`balance`。
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `currency` | string | 币种，例如 `TWD` |
+| `balance` | number | 平台余额 |
+</Card>
 
 ## POST `/player/login`
 
 核发大厅或游戏 URL。`ip` 为玩家地址。
 
-| 字段 | 必填 | 类型 | 约束 |
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
 |---|---|---|---|
-| `acc` | 是 | string | 英数，6–60 |
+| `acc` | 是 | string | 玩家账号 |
 | `lang` | 是 | string | BCP 47，例如 `zh-CN` |
-| `ip` | 是 | string | IPv4 或 IPv6 |
-| `device` | 是 | string | `DESKTOP` \| `MOBILE` |
+| `ip` | 是 | string | 玩家 IPv4 或 IPv6 |
+| `device` | 是 | string | `DESKTOP` 或 `MOBILE` |
 | `game_code` | 否 | string | 省略则进入大厅 |
-| `return_url` | 否 | string | 合法 URL |
+| `return_url` | 否 | string | 离开游戏后的返回 URL |
+</Card>
 
-```json
-{
-  "acc": "jordan",
-  "lang": "zh-CN",
-  "ip": "203.0.113.10",
-  "device": "MOBILE",
-  "game_code": "MLCQ"
-}
-```
-
-```json
-{ "code": "OK", "data": { "url": "https://example/?token=..." } }
-```
-
-客户端开启 `data.url`，不得修改 `token`。
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `url` | string | 大厅或游戏完整 URL，已含 `token`。客户端直接打开，不得修改 `token` |
+</Card>
 
 ## POST `/player/logout`
 
-| 字段 | 必填 | 说明 |
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `acc` | 否 | string | 省略时登出该商户全部会员 |
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
 |---|---|---|
-| `acc` | 否 | 省略时登出该商户全部会员 |
+| `count` | integer | 实际登出的会员数 |
+</Card>

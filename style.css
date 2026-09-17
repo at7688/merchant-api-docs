@@ -1,0 +1,12 @@
+h2 {
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
+h3 {
+  letter-spacing: 0.02em;
+}
+
+pre {
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+}

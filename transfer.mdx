@@ -3,56 +3,135 @@ title: 轉帳
 description: 轉帳錢包入金與出金。
 ---
 
-適用於轉帳錢包。`sn` 為冪等鍵：同一業務事件對應唯一 `sn`，重複提交不會重複入帳。
+適用於轉帳錢包。`sn` 為冪等鍵。成功時外層信封見 [傳輸協議](/protocol)。`agent`／`member` 物件欄位見頁末。
 
-| 欄位 | 約束 |
+| 通則 | 約束 |
 |---|---|
-| `sn` | 英數與 `_` `-`，長度 6–120 |
+| `sn` | 英數與 `_` `-`，6–120 |
 | `acc` | 玩家帳號，不含前綴 |
-| `amount` | 不得為 0。正數為入金（商戶 → 平台），負數為出金（平台 → 商戶） |
+| `amount` | 不得為 0。正數＝入金（商戶 → 平台），負數＝出金（平台 → 商戶） |
 | 時間 | Unix 秒 |
 
 ## POST `/transfer/add`
+
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `sn` | 是 | string | 商戶單號，不可重複使用於不同業務 |
+| `acc` | 是 | string | 玩家帳號 |
+| `amount` | 是 | number | 入金為正、出金為負 |
 
 ```json
 { "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
 ```
 
-出金例：`"amount": -50`。
+出金：`"amount": -50`。
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `currency` | string | 幣別 |
+| `balance` | number | 本筆完成後之平台餘額 |
 
 ```json
-{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
+{
+  "code": "OK",
+  "data": { "currency": "TWD", "balance": 100 }
+}
 ```
 
-`balance` 為該筆完成後之平台餘額。
-
-| code | 語意 | 處理 |
+| code | 說明 | 處理 |
 |---|---|---|
-| `OK` | 入帳完成 | 不得重用該 `sn` |
 | `TRANSFER_SN_EXIST` | 該 `sn` 已成功入帳 | 呼叫 `/transfer/check`。非失敗 |
 | `BALANCE_INSUFFICIENT` | 出金餘額不足 | 未入帳 |
 | `ACC_NOT_FOUND` | 玩家不存在 | 未入帳 |
 
-HTTP 500 或連線中斷表示結果未決。須以**原 `sn`** 呼叫 `/transfer/check`：查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn`。於 500 後立即更換 `sn` 重送可導致重複入帳。
+HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn`。
+</Card>
 
 ## POST `/transfer/check`
+
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `sn` | 是 | string | 原轉帳單號 |
+| `acc` | 是 | string | 玩家帳號 |
 
 ```json
 { "sn": "T20260917-0001", "acc": "jordan" }
 ```
+</Card>
 
-無紀錄時 `code` 為 `TRANSFER_NOT_FOUND`。成功時 `data` 含 `sn`、`amount`、`balance`、`created_at`。
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `sn` | string | 轉帳單號 |
+| `amount` | number | 該筆金額（正入負出） |
+| `balance` | number | 該筆完成當下之平台餘額 |
+| `created_at` | integer | 入帳時間，Unix 秒 |
+| `agent` | object | 商戶摘要，見頁末 |
+| `member` | object | 玩家摘要，見頁末 |
+
+```json
+{
+  "code": "OK",
+  "data": {
+    "sn": "T20260917-0001",
+    "amount": 100,
+    "balance": 100,
+    "created_at": 1758723906,
+    "agent": { "id": 1, "acc": "kiwi01", "name": "Kiwi", "player_type": "AGENT", "currency": "TWD", "sub_role": "" },
+    "member": { "id": 123, "acc": "kiwi01_jordan", "name": "Amy", "player_type": "MEMBER", "currency": "TWD", "sub_role": "" }
+  }
+}
+```
+
+無紀錄：`TRANSFER_NOT_FOUND`。
+</Card>
 
 ## POST `/transfer/list`
 
 速率限制：每商戶每分鐘 10 次。
 
-| 欄位 | 必填 | 約束 |
-|---|---|---|
-| `page` | 是 | ≥ 1 |
-| `perpage` | 是 | 1–100 |
-| `start_at` | 是 | Unix 秒 |
-| `end_at` | 是 | 須大於 `start_at` |
-| `acc` | 否 | 篩選玩家 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `page` | 是 | integer | ≥ 1 |
+| `perpage` | 是 | integer | 1–100 |
+| `start_at` | 是 | integer | 起始 Unix 秒 |
+| `end_at` | 是 | integer | 結束 Unix 秒，須大於 `start_at` |
+| `acc` | 否 | string | 篩選玩家 |
+</Card>
 
-回應 `data`：`list`、`row_count`、`page_count`。
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `row_count` | integer | 符合條件之總筆數 |
+| `page_count` | integer | 總頁數 |
+| `list` | array | 轉帳列，新至舊 |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `sn` | string | 轉帳單號 |
+| `amount` | number | 金額 |
+| `balance` | number | 該筆完成當下餘額 |
+| `created_at` | integer | Unix 秒 |
+| `agent` | object | 商戶摘要 |
+| `member` | object | 玩家摘要 |
+</Card>
+
+## 物件 `agent`／`member`
+
+`Player.Profile()`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `id` | integer | 內部識別 |
+| `acc` | string | 完整帳號 |
+| `name` | string | 顯示名稱 |
+| `player_type` | string | `AGENT` 或 `MEMBER` |
+| `currency` | string | 幣別 |
+| `sub_role` | string | 子角色，可為空字串 |

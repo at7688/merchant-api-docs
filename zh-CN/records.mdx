@@ -3,66 +3,64 @@ title: 游戏记录
 description: 注单、JP、报表、刮刮卡。
 ---
 
-查询接口不变更余额。时间为 Unix 秒。`end_at` 须大于 `start_at`，否则 `PARAM_INVALID`。
+查询接口不变更余额。时间为 Unix 秒。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 同 [转账](/zh-CN/transfer)。
 
-下列接口限流为每商户每分钟 10 次：`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`。超出为 `TOO_MANY_REQUESTS`。
-
-`acc` 不含前缀；省略表示该商户全部玩家。
+下列接口每商户每分钟 10 次。`acc` 不含前缀。
 
 ## POST `/game/list`
 
-内层得为 `{}`。`data.list` 元素含 `code`（对应登录 `game_code`）、`name`、`game_category_code`、`game_type_code`、`id`。
+响应 `list[]`：`id`（integer）、`code`（登录 `game_code`）、`name`（object，语种为键）、`game_category_code`、`game_type_code`。
 
 ## POST `/bet_rec/list`
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `page` | 是 | ≥ 1 |
-| `perpage` | 是 | 1–1000 |
-| `start_at` / `end_at` | 是 | Unix 秒 |
-| `acc` | 否 | |
+请求：`page`、`perpage` 1–1000、`start_at`、`end_at`，可选 `acc`。
 
-响应 `data`：`list`、`row_count`、`page_count`。
+响应 `row_count`、`page_count`、`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | 注单号 |
+| `round_sn` | string | 局号 |
+| `game_category_code` | string | 类别 |
+| `game_type_code` | string | 类型 |
+| `game_code` | string | 游戏 |
+| `acc` | string | 完整账号 |
+| `player_acc` | string | 不含前缀 |
+| `bet_amount` | number | 投注额 |
+| `win_amount` | number | 派奖额 |
+| `valid_amount` | number | 有效投注 |
+| `result` | number | 派奖 − 投注 |
+| `free_game_type` | string | `NONE`、`TRIGGER`、`PURCHASE` |
+| `beted_at` | integer | 下注时间 |
+| `settled_at` | integer | 结算时间；未结算可为 0 |
+| `status` | string | `PENDING`、`PROCESSING`、`FINISH`、`CANCEL` |
+| `agent` / `member` | object | 摘要 |
+| `slot_bet_detail` | object | 游戏端明细 |
 
 ## POST `/bet_rec/detail`
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `sn` | 是 | 长度 ≤ 120 |
-| `lang` | 是 | BCP 47 |
+请求：`sn`、`lang`。响应 `data.url`：牌面结果页 URL。
 
 ## POST `/bet_rec/query`
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `sns` | 是 | 1–100 个单号 |
-
-`data.list` 元素含 `sn`、`status`。`UNKNOWN` 表示平台无此单，不得据此自动退款。
+请求：`sns`（1–100）。响应 `list[]`：`sn`、`status`（含 `UNKNOWN`）。`UNKNOWN` 不得据此自动退款。
 
 ## POST `/bet_report/list`
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `page` / `perpage` | 是 | perpage 1–1000 |
-| `start_at` / `end_at` | 是 | |
-| `report_unit` | 是 | `min` \| `day` |
-| `time_unit` | 是 | `bet` \| `settle` |
-| `acc` | 否 | |
+请求：`report_unit`（`min`\|`day`）、`time_unit`（`bet`\|`settle`）。
+
+响应 `list[]`：`datetime`、`bet_count`、`bet_member_count`、`bet_amount`、`valid_amount`、`win_amount`、`result`。
 
 ## POST `/jp_rec/list`
 
-参数同 `/bet_rec/list`。
+`list[]`：`sn`、`game_category_code`、`game_type_code`、`game_code`、`jp_type`、`desk_id`、`acc`、`player_acc`、`bet_amount`、`amount`（JP 派奖）、`beted_at`、`settled_at`、`agent`、`member`、`slot_bet_detail`。
 
 ## POST `/jp_rec/detail`
 
-参数同 `/bet_rec/detail`。
+响应 `data.url`（`is_jp=1`）。
 
 ## POST `/scratch_card_rec/list`
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `page` / `perpage` | 是 | perpage 1–1000 |
-| `start_at` / `end_at` | 是 | |
-| `status` | 否 | `PENDING` \| `CLAIMED` \| `SCRATCHED` |
-| `acc` | 否 | |
-| `lang` | 否 | BCP 47 |
+`list[]`：`sn`（`SC_{id}`）、`activity_name`、`card_code`、`card_name`、`prize_level`、`prize_amount`、`status`、`player_acc`、`member`（可为 null）、`claimed_at`、`scratched_at`。
+
+`summary`：`total_count`、`pending_count`、`claimed_count`、`scratched_count`、`total_prize`、`scratched_prize`（已派奖金）。

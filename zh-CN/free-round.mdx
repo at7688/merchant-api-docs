@@ -3,64 +3,38 @@ title: 免费旋转
 description: 发放、取消、查询。
 ---
 
-向指定玩家发放指定游戏的免费旋转。该等旋转不扣除玩家余额、不计入 JP。
-
-单一钱包结算时，平台仍可能向商户发出 win 回调（仅派奖、无对应 bet）。商户须依 `sn` 加款。
-
-`bet_amount` 为名义注额，须大于 0，且位于该玩家该游戏单注上下限内，否则 `BET_AMOUNT_RANGE`。
+向指定玩家发放指定游戏的免费旋转。不扣除玩家余额、不计入 JP。单一钱包结算时仍可能发出 win 回调。报文见 [传输协议](/zh-CN/protocol)。
 
 ## POST `/free_round/add`
 
-`sn` 为幂等键。重复提交返回 `existed: true`，不重复发放。
+`sn` 为幂等键。
 
-```json
-{
-  "sn": "FR-20260917-001",
-  "acc": "jordan",
-  "game_code": "MLCQ",
-  "bet_amount": 10,
-  "count": 5,
-  "expire_at": 1759300000
-}
-```
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `sn` | 是 | string | 活动单号，≤ 80 |
+| `acc` | 是 | string | 玩家账号，不含前缀 |
+| `game_code` | 是 | string | 游戏代码 |
+| `bet_amount` | 是 | number | 名义注额，> 0 |
+| `count` | 是 | integer | 次数，1–100 |
+| `expire_at` | 是 | integer | 到期 Unix 秒；`0` 为系统默认 |
+</Card>
 
-| 字段 | 必填 | 约束 |
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
 |---|---|---|
-| `sn` | 是 | 长度 ≤ 80 |
-| `acc` | 是 | 不含前缀 |
-| `game_code` | 是 | 有效游戏代码 |
-| `bet_amount` | 是 | > 0 |
-| `count` | 是 | 1–100 |
-| `expire_at` | 是 | Unix 秒；`0` 表示系统默认有效期 |
+| `sn` | string | 活动单号 |
+| `existed` | boolean | `true` 表示该 `sn` 先前已发放 |
 
-```json
-{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
-```
-
-| code | 定义 |
-|---|---|
-| `FREE_ROUND_CAP` | 当月名义总额（次数 × 注额）超过上限 |
-| `BET_AMOUNT_RANGE` | 注额超出上下限 |
-| `ACC_NOT_FOUND` | 玩家不存在 |
-| `GAME_NOT_FOUND` | 游戏代码无效 |
-
-剩余次数由平台于旋转时扣减。
+错误码：`FREE_ROUND_CAP`、`BET_AMOUNT_RANGE`、`ACC_NOT_FOUND`、`GAME_NOT_FOUND`。
+</Card>
 
 ## POST `/free_round/cancel`
 
-```json
-{ "sn": "FR-20260917-001" }
-```
-
-剩余次数归零。已消耗次数仍保留于注单历史。无此活动时 `ACC_NOT_FOUND`。
+请求 `{ "sn": "..." }`。响应 `data` 为 `null`。剩余次数归零。
 
 ## POST `/free_round/list`
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `page` | 是 | ≥ 1 |
-| `perpage` | 是 | 1–100 |
-| `acc` | 否 | |
-| `start_at` / `end_at` | 否 | Unix 秒 |
-
-`list` 元素：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
+<Card title="响应" icon="arrow-down-to-bracket">
+`row_count`、`page_count`，`list[]`：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
+</Card>

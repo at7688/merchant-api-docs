@@ -3,7 +3,7 @@ title: 回調
 description: 平台對商戶之回調。Timeout 15 秒。
 ---
 
-適用於單錢包。平台對商戶 base URL 發出 `POST`，本文為：
+適用於單錢包。平台對商戶 base URL 發出 `POST`：
 
 ```json
 { "data": "<AES-GCM hex>" }
@@ -15,63 +15,51 @@ description: 平台對商戶之回調。Timeout 15 秒。
 成功條件：HTTP 200，且 JSON `code` 為字串 `"OK"`。`"200"`、數值 `200` 或其他字串均視為失敗。
 </Warning>
 
-## 接口
+逾時 **15 秒**。不立即重送同一封包；扣款結果未決時可能續發 `/player/refund`。玩家離線後仍可能收到 `/player/win`。
 
-| 路徑 | 時機 | 語意 |
-|---|---|---|
-| `/player/balance` | 進入遊戲、重新整理 | 回傳餘額 |
-| `/player/bet` | 下注 | 扣款 |
-| `/player/win` | 結算派彩 | 加款 |
-| `/player/refund` | 注單無法成立 | 退回對應 bet 金額 |
-
-逾時為 **15 秒**。逾時後平台不立即重送同一封包；扣款結果未決時可能續發 `refund`。商戶須在時限內完成 HTTP 回應。
-
-玩家離線後仍可能收到 `/player/win`。不得以離線為由拒絕。
-
-## 冪等
-
-動錢請求皆含 `sn`。商戶須以 `sn` 為唯一鍵：
-
-| 狀態 | 行為 |
-|---|---|
-| 未見該 `sn` | 執行扣／加並持久化結果，回應 `OK` |
-| 已成功處理 | 回傳首次結果，餘額不變 |
-| 已明確拒絕 | 回傳首次錯誤 `code` |
+動錢請求以 `sn` 為唯一鍵：未見則執行並持久化；已成功則回傳首次結果且餘額不變；已拒絕則回傳首次錯誤 `code`。
 
 ## POST `{base}/player/balance`
 
-```json
-{
-  "timestamp": 1758723906,
-  "acc": "kiwi01_jordan",
-  "player_acc": "jordan"
-}
-```
+<Card title="請求（解密後）" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `timestamp` | integer | Unix 秒 |
+| `acc` | string | 完整帳號，含代理前綴 |
+| `player_acc` | string | 不含前綴 |
+</Card>
 
-| 欄位 | 說明 |
-|---|---|
-| `acc` | 含代理前綴 |
-| `player_acc` | 不含前綴 |
+<Card title="回應" icon="arrow-up-from-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `code` | string | 成功為 `"OK"` |
+| `data.balance` | number | 商戶端目前餘額 |
 
 ```json
 { "code": "OK", "data": { "balance": 1680.4 } }
 ```
+</Card>
 
 ## POST `{base}/player/bet`
 
-```json
-{
-  "timestamp": 1758723906,
-  "sn": "SGP2504300009402",
-  "game_code": "MLCQ",
-  "acc": "jordan",
-  "name": "Amy",
-  "amount": 100,
-  "beted_at": 1758723906
-}
-```
+<Card title="請求（解密後）" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `timestamp` | integer | Unix 秒 |
+| `sn` | string | 冪等鍵 |
+| `game_code` | string | 遊戲代碼 |
+| `acc` | string | 玩家帳號，不含前綴 |
+| `name` | string | 顯示名稱 |
+| `amount` | number | 扣除額（正數） |
+| `beted_at` | integer | 下注時間，Unix 秒 |
+</Card>
 
-`acc` 不含前綴。`amount` 為扣除額（正數）。
+<Card title="回應" icon="arrow-up-from-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `code` | string | 成功 `"OK"`；餘額不足例如 `BALANCE_INSUFFICIENT` |
+| `data.original_balance` | number | 扣款前餘額 |
+| `data.balance` | number | 扣款後餘額 |
 
 ```json
 {
@@ -80,20 +68,50 @@ description: 平台對商戶之回調。Timeout 15 秒。
 }
 ```
 
-餘額不足：HTTP 200，`code` 為 `BALANCE_INSUFFICIENT`。
+餘額不足：HTTP 200，`code` 非 `OK`。
+</Card>
 
 ## POST `{base}/player/win`
 
 加款。錦標賽派彩之 `game_code` 為 `TOURNAMENT`。
 
-| 欄位 | 說明 |
-|---|---|
-| `sn` | 冪等鍵 |
-| `amount` | 增加額（正數） |
-| `beted_at` / `settled_at` | Unix 秒 |
+<Card title="請求（解密後）" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `timestamp` | integer | Unix 秒 |
+| `sn` | string | 冪等鍵 |
+| `game_code` | string | 遊戲代碼或 `TOURNAMENT` |
+| `acc` | string | 不含前綴 |
+| `name` | string | 顯示名稱 |
+| `amount` | number | 增加額（正數） |
+| `beted_at` | integer | 下注時間 |
+| `settled_at` | integer | 結算時間 |
+</Card>
 
-回應 `data`：`original_balance`（加款前）、`balance`（加款後）。
+<Card title="回應" icon="arrow-up-from-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `code` | string | `"OK"` |
+| `data.original_balance` | number | 加款前餘額 |
+| `data.balance` | number | 加款後餘額 |
+</Card>
 
 ## POST `{base}/player/refund`
 
-欄位：`sn`、`game_code`、`acc`、`name`、`amount`、`timestamp`。退回對應下注。若該 `sn` 已退款，回應 `OK` 且餘額不變。
+<Card title="請求（解密後）" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `timestamp` | integer | Unix 秒 |
+| `sn` | string | 對應 bet 之單號 |
+| `game_code` | string | 遊戲代碼 |
+| `acc` | string | 不含前綴 |
+| `name` | string | 顯示名稱 |
+| `amount` | number | 退回額（正數） |
+</Card>
+
+<Card title="回應" icon="arrow-up-from-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `code` | string | `"OK"`。已退過仍回 `OK`，餘額不變 |
+| `data` | object \| omitted | 得省略 |
+</Card>

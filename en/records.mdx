@@ -3,74 +3,74 @@ title: Records
 description: Bets, JP, reports, scratch cards.
 ---
 
-Query APIs do not mutate balance. Times are Unix seconds. `end_at` must exceed `start_at` or the response is `PARAM_INVALID`.
+Read-only. Unix seconds. `end_at` > `start_at`. Envelope: [Protocol](/en/protocol). Profiles: [Transfers](/en/transfer).
 
-Rate limit (10 / merchant / minute): `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`. Exceeding the limit returns `TOO_MANY_REQUESTS`.
-
-`acc` excludes the prefix; omitted means all players under the merchant.
+Rate 10 / merchant / minute: `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`.
 
 ## POST `/game/list`
 
-Inner body may be `{}`. `data.list` items:
-
-| Field | Description |
-|---|---|
-| `code` | Game code (`game_code` on login) |
-| `name` | Localised name |
-| `game_category_code` | Category |
-| `game_type_code` | Type |
-| `id` | Internal id |
+<Card title="Response" icon="arrow-down-to-bracket">
+`data.list[]`: `id` (integer), `code` (string, login `game_code`), `name` (object, locale keys), `game_category_code`, `game_type_code` (string).
+</Card>
 
 ## POST `/bet_rec/list`
 
-| Field | Required | Constraints |
-|---|---|---|
-| `page` | yes | ≥ 1 |
-| `perpage` | yes | 1–1000 |
-| `start_at` / `end_at` | yes | Unix seconds |
-| `acc` | no | |
+<Card title="Request" icon="arrow-up-from-bracket">
+`page` ≥ 1, `perpage` 1–1000, `start_at`, `end_at`, optional `acc`.
+</Card>
 
-`data`: `list`, `row_count`, `page_count`.
+<Card title="Response" icon="arrow-down-to-bracket">
+`row_count`, `page_count`, `list`.
+
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | Bet id |
+| `round_sn` | string | Round id |
+| `game_category_code` | string | Category |
+| `game_type_code` | string | Type |
+| `game_code` | string | Game |
+| `acc` | string | Full account |
+| `player_acc` | string | Unprefixed |
+| `bet_amount` | number | Stake |
+| `win_amount` | number | Payout |
+| `valid_amount` | number | Valid stake |
+| `result` | number | Payout − stake |
+| `free_game_type` | string | `NONE`, `TRIGGER`, `PURCHASE` |
+| `beted_at` | integer | Bet time |
+| `settled_at` | integer | Settlement time; 0 if unset |
+| `status` | string | `PENDING`, `PROCESSING`, `FINISH`, `CANCEL` |
+| `agent` / `member` | object | Profiles |
+| `slot_bet_detail` | object | Game-specific |
+</Card>
 
 ## POST `/bet_rec/detail`
 
-| Field | Required | Constraints |
-|---|---|---|
-| `sn` | yes | ≤ 120 |
-| `lang` | yes | BCP 47 |
+Request: `sn`, `lang` (BCP 47). Response `data.url`: result-page URL.
 
 ## POST `/bet_rec/query`
 
-| Field | Required | Constraints |
-|---|---|---|
-| `sns` | yes | 1–100 identifiers |
-
-Items: `sn`, `status`. `UNKNOWN` means no platform row. It must not trigger an automatic refund.
+Request: `sns` (1–100). Response `list[]`: `sn`, `status` (`PENDING` / `PROCESSING` / `FINISH` / `CANCEL` / `UNKNOWN`). `UNKNOWN` must not trigger an automatic refund.
 
 ## POST `/bet_report/list`
 
-| Field | Required | Constraints |
-|---|---|---|
-| `page` / `perpage` | yes | perpage 1–1000 |
-| `start_at` / `end_at` | yes | |
-| `report_unit` | yes | `min` \| `day` |
-| `time_unit` | yes | `bet` \| `settle` |
-| `acc` | no | |
+Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` (`min`\|`day`), `time_unit` (`bet`\|`settle`), optional `acc`.
+
+Response `list[]`: `datetime` (string), `bet_count`, `bet_member_count` (integer), `bet_amount`, `valid_amount`, `win_amount`, `result` (number). Plus `row_count`, `page_count`.
 
 ## POST `/jp_rec/list`
 
-Same parameters as `/bet_rec/list`.
+Request as bet list. `list[]`: `sn`, `game_category_code`, `game_type_code`, `game_code`, `jp_type`, `desk_id`, `acc`, `player_acc`, `bet_amount`, `amount` (JP payout), `beted_at`, `settled_at`, `agent`, `member`, `slot_bet_detail`.
 
 ## POST `/jp_rec/detail`
 
-Same parameters as `/bet_rec/detail`.
+Response `data.url` (JP result page, `is_jp=1`).
 
 ## POST `/scratch_card_rec/list`
 
-| Field | Required | Constraints |
-|---|---|---|
-| `page` / `perpage` | yes | perpage 1–1000 |
-| `start_at` / `end_at` | yes | |
-| `status` | no | `PENDING` \| `CLAIMED` \| `SCRATCHED` |
-| `acc` | no | |
-| `lang` | no | BCP 47 |
+Request: `page`, `perpage`, `start_at`, `end_at`, optional `status` (`PENDING`\|`CLAIMED`\|`SCRATCHED`), `acc`, `lang`.
+
+`list[]`: `sn` (`SC_{id}`), `activity_name`, `card_code`, `card_name`, `prize_level`, `prize_amount`, `status`, `player_acc`, `member` (object or null), `claimed_at`, `scratched_at`.
+
+`summary`: `total_count`, `pending_count`, `claimed_count`, `scratched_count`, `total_prize`, `scratched_prize` (paid amount).

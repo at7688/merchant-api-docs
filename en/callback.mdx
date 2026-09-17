@@ -3,89 +3,93 @@ title: Callbacks
 description: Platform callbacks. Timeout 15 seconds.
 ---
 
-Seamless wallet only. The platform `POST`s to the merchant base URL:
-
-```json
-{ "data": "<AES-GCM hex>" }
-```
-
-The key matches the merchant ApiKey. Layout: [Protocol](/en/protocol).
+Seamless wallet only. Platform `POST` `{ "data": "<hex>" }`. Same ApiKey. [Protocol](/en/protocol).
 
 <Warning>
-Success: HTTP 200 and JSON `code` equal to the string `"OK"`. `"200"`, numeric `200`, and other strings are failures.
+Success: HTTP 200 and `code` `"OK"`. `"200"` and numeric `200` are failures.
 </Warning>
 
-## Endpoints
-
-| Path | When | Semantics |
-|---|---|---|
-| `/player/balance` | Game entry, refresh | Return balance |
-| `/player/bet` | Bet | Debit |
-| `/player/win` | Settlement | Credit |
-| `/player/refund` | Bet cannot complete | Refund that bet |
-
-Timeout is **15 seconds**. The same packet is not resent immediately; an undetermined debit may be followed by `refund`. The HTTP response must complete within the limit.
-
-`/player/win` may arrive after disconnect and must not be rejected on that basis.
-
-## Idempotency
-
-Money-moving calls include `sn` as a unique key.
-
-| State | Behaviour |
-|---|---|
-| Unknown `sn` | Apply debit/credit, persist, return `OK` |
-| Already succeeded | Return the first body; balance unchanged |
-| Already rejected | Return the first error `code` |
+Timeout 15 seconds. Idempotency on `sn`. `/player/win` may arrive after disconnect.
 
 ## POST `{base}/player/balance`
 
-```json
-{
-  "timestamp": 1758723906,
-  "acc": "kiwi01_jordan",
-  "player_acc": "jordan"
-}
-```
+<Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `timestamp` | integer | Unix seconds |
+| `acc` | string | Prefixed |
+| `player_acc` | string | Unprefixed |
+</Card>
 
-| Field | Description |
-|---|---|
-| `acc` | Prefixed |
-| `player_acc` | Unprefixed |
-
-```json
-{ "code": "OK", "data": { "balance": 1680.4 } }
-```
+<Card title="Response" icon="arrow-up-from-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `code` | string | `"OK"` |
+| `data.balance` | number | Merchant-side balance |
+</Card>
 
 ## POST `{base}/player/bet`
 
-```json
-{
-  "timestamp": 1758723906,
-  "sn": "SGP2504300009402",
-  "game_code": "MLCQ",
-  "acc": "jordan",
-  "name": "Amy",
-  "amount": 100,
-  "beted_at": 1758723906
-}
-```
+<Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `timestamp` | integer | Unix seconds |
+| `sn` | string | Idempotency key |
+| `game_code` | string | Game |
+| `acc` | string | Unprefixed |
+| `name` | string | Display name |
+| `amount` | number | Debit (positive) |
+| `beted_at` | integer | Bet time |
+</Card>
 
-`acc` is unprefixed. `amount` is the debit (positive).
-
-```json
-{
-  "code": "OK",
-  "data": { "original_balance": 1000, "balance": 900 }
-}
-```
-
-Insufficient funds: HTTP 200, `code` `BALANCE_INSUFFICIENT`.
+<Card title="Response" icon="arrow-up-from-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `code` | string | `"OK"` or e.g. `BALANCE_INSUFFICIENT` |
+| `data.original_balance` | number | Before debit |
+| `data.balance` | number | After debit |
+</Card>
 
 ## POST `{base}/player/win`
 
-Credit. Tournament payouts use `game_code` `TOURNAMENT`. `data`: `original_balance` (before credit), `balance` (after).
+Credit. Tournaments: `game_code` `TOURNAMENT`.
+
+<Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `timestamp` | integer | Unix seconds |
+| `sn` | string | Idempotency key |
+| `game_code` | string | Game or `TOURNAMENT` |
+| `acc` | string | Unprefixed |
+| `name` | string | Display name |
+| `amount` | number | Credit (positive) |
+| `beted_at` / `settled_at` | integer | Unix seconds |
+</Card>
+
+<Card title="Response" icon="arrow-up-from-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `code` | string | `"OK"` |
+| `data.original_balance` | number | Before credit |
+| `data.balance` | number | After credit |
+</Card>
 
 ## POST `{base}/player/refund`
 
-Fields: `sn`, `game_code`, `acc`, `name`, `amount`, `timestamp`. Refund the matching bet. If already refunded, return `OK` with unchanged balance.
+<Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `timestamp` | integer | Unix seconds |
+| `sn` | string | Matching bet id |
+| `game_code` | string | Game |
+| `acc` | string | Unprefixed |
+| `name` | string | Display name |
+| `amount` | number | Refund (positive) |
+</Card>
+
+<Card title="Response" icon="arrow-up-from-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `code` | string | `"OK"` even if already refunded |
+| `data` | object \| omitted | May be omitted |
+</Card>

@@ -83,6 +83,8 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 ## 回應
 
+各接口成功時均為此信封。`data` 之欄位見該接口頁。
+
 ```json
 {
   "api_version": "v1",
@@ -95,9 +97,11 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `code` | string | 成功值僅為 `OK` |
-| `data` | object \| array \| null | 非字串 |
-| `trace_id` | string | 日誌關聯識別 |
+| `api_version` | string | API 版本，目前為 `v1` |
+| `message` | string | 附加說明，多數為空字串 |
+| `code` | string | 業務結果。成功僅為 `OK` |
+| `data` | object \| array \| null | 成功時之資料本體。錯誤時多為 `null` |
+| `trace_id` | string | 本次請求識別，對帳與缺陷報告使用 |
 
 用戶端須先解析 JSON，再讀取 `code`。不得在未讀取 body 的情況下僅依 HTTP 狀態中止處理。
 

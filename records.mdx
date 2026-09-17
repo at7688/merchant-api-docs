@@ -3,75 +3,235 @@ title: 遊戲紀錄
 description: 注單、JP、報表、刮刮卡。
 ---
 
-查詢接口不變更餘額。時間為 Unix 秒。`end_at` 須大於 `start_at`，否則 `PARAM_INVALID`。
+查詢接口不變更餘額。時間為 Unix 秒。`end_at` 須大於 `start_at`。成功信封見 [傳輸協議](/protocol)。`agent`／`member` 同 [轉帳](/transfer) 頁末。
 
-下列接口速率為每商戶每分鐘 10 次，超出為 `TOO_MANY_REQUESTS`：`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`。
+下列接口每商戶每分鐘 10 次：`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`。超出為 `TOO_MANY_REQUESTS`。
 
 `acc` 不含前綴；省略表示該商戶全部玩家。
 
 ## POST `/game/list`
 
-內層得為 `{}`。`data.list` 元素：
+<Card title="請求" icon="arrow-up-from-bracket">
+內層得為 `{}`。
+</Card>
 
-| 欄位 | 說明 |
-|---|---|
-| `code` | 遊戲代碼，對應登入 `game_code` |
-| `name` | 名稱（多語系） |
-| `game_category_code` | 類別 |
-| `game_type_code` | 類型 |
-| `id` | 內部識別 |
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `list` | array | 遊戲清單 |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `id` | integer | 內部識別 |
+| `code` | string | 遊戲代碼，對應登入 `game_code` |
+| `name` | object | 多語系名稱，鍵為語系代碼 |
+| `game_category_code` | string | 類別代碼 |
+| `game_type_code` | string | 類型代碼 |
+</Card>
 
 ## POST `/bet_rec/list`
 
-| 欄位 | 必填 | 約束 |
-|---|---|---|
-| `page` | 是 | ≥ 1 |
-| `perpage` | 是 | 1–1000 |
-| `start_at` | 是 | Unix 秒 |
-| `end_at` | 是 | 大於 `start_at` |
-| `acc` | 否 | |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `page` | 是 | integer | ≥ 1 |
+| `perpage` | 是 | integer | 1–1000 |
+| `start_at` | 是 | integer | Unix 秒 |
+| `end_at` | 是 | integer | 須大於 `start_at` |
+| `acc` | 否 | string | 篩選玩家 |
+</Card>
 
-回應 `data`：`list`、`row_count`、`page_count`。
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `row_count` | integer | 總筆數 |
+| `page_count` | integer | 總頁數 |
+| `list` | array | 注單列 |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `sn` | string | 注單單號 |
+| `round_sn` | string | 局號 |
+| `game_category_code` | string | 類別 |
+| `game_type_code` | string | 類型 |
+| `game_code` | string | 遊戲代碼 |
+| `acc` | string | 完整帳號 |
+| `player_acc` | string | 不含前綴 |
+| `bet_amount` | number | 投注額 |
+| `win_amount` | number | 派彩額 |
+| `valid_amount` | number | 有效投注 |
+| `result` | number | 輸贏（派彩 − 投注） |
+| `free_game_type` | string | `NONE`、`TRIGGER`、`PURCHASE` |
+| `beted_at` | integer | 下注時間，Unix 秒 |
+| `settled_at` | integer | 結算時間，Unix 秒；未結算可為 0 |
+| `status` | string | `PENDING`、`PROCESSING`、`FINISH`、`CANCEL` |
+| `agent` | object | 商戶摘要 |
+| `member` | object | 玩家摘要 |
+| `slot_bet_detail` | object | 遊戲端明細，結構依遊戲而異 |
+</Card>
 
 ## POST `/bet_rec/detail`
 
-| 欄位 | 必填 | 約束 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `sn` | 是 | string | 注單單號，長度 ≤ 120 |
+| `lang` | 是 | string | BCP 47 |
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
 |---|---|---|
-| `sn` | 是 | 長度 ≤ 120 |
-| `lang` | 是 | BCP 47 |
+| `url` | string | 牌面結果頁 URL |
+
+```json
+{
+  "code": "OK",
+  "data": { "url": "https://lobby.example/gameResult?sn=SGP...&lang=zh-TW&is_jp=0" }
+}
+```
+</Card>
 
 ## POST `/bet_rec/query`
 
-| 欄位 | 必填 | 約束 |
-|---|---|---|
-| `sns` | 是 | 1–100 個單號 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `sns` | 是 | string[] | 1–100 個單號 |
+</Card>
 
-`data.list` 元素含 `sn`、`status`。`UNKNOWN` 表示平台無此單，不得據此自動退款。
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `list` | array | 與請求 `sns` 等長、順序相同 |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `sn` | string | 查詢之單號 |
+| `status` | string | `PENDING`、`PROCESSING`、`FINISH`、`CANCEL`，或 `UNKNOWN`（平台無此單） |
+
+`UNKNOWN` 不得據以自動退款。
+</Card>
 
 ## POST `/bet_report/list`
 
-| 欄位 | 必填 | 約束 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `page` | 是 | integer | ≥ 1 |
+| `perpage` | 是 | integer | 1–1000 |
+| `start_at` / `end_at` | 是 | integer | Unix 秒 |
+| `report_unit` | 是 | string | `min` 或 `day` |
+| `time_unit` | 是 | string | `bet`（依下注日）或 `settle`（依結算日） |
+| `acc` | 否 | string | |
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
 |---|---|---|
-| `page` / `perpage` | 是 | perpage 1–1000 |
-| `start_at` / `end_at` | 是 | |
-| `report_unit` | 是 | `min` \| `day` |
-| `time_unit` | 是 | `bet` \| `settle` |
-| `acc` | 否 | |
+| `row_count` | integer | 總列數 |
+| `page_count` | integer | 總頁數 |
+| `list` | array | 彙總列 |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `datetime` | string | 時間桶 |
+| `bet_count` | integer | 注單數 |
+| `bet_member_count` | integer | 下注人數 |
+| `bet_amount` | number | 投注額 |
+| `valid_amount` | number | 有效投注 |
+| `win_amount` | number | 派彩額 |
+| `result` | number | 平台輸贏 |
+</Card>
 
 ## POST `/jp_rec/list`
 
-參數同 `/bet_rec/list`。
+請求欄位同 `/bet_rec/list`。
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `row_count` | integer | 總筆數 |
+| `page_count` | integer | 總頁數 |
+| `list` | array | JP 列 |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `sn` | string | 單號 |
+| `game_category_code` | string | 類別 |
+| `game_type_code` | string | 類型 |
+| `game_code` | string | 遊戲 |
+| `jp_type` | string | JP 類型 |
+| `desk_id` | string | 桌號，可為空 |
+| `acc` | string | 完整帳號 |
+| `player_acc` | string | 不含前綴 |
+| `bet_amount` | number | 觸發該 JP 之投注 |
+| `amount` | number | JP 派彩 |
+| `beted_at` | integer | Unix 秒 |
+| `settled_at` | integer | Unix 秒 |
+| `agent` | object | 商戶摘要 |
+| `member` | object | 玩家摘要 |
+| `slot_bet_detail` | object | 遊戲端明細 |
+</Card>
 
 ## POST `/jp_rec/detail`
 
-參數同 `/bet_rec/detail`。
+請求同 `/bet_rec/detail`。回應 `data.url` 為 JP 牌面結果頁（`is_jp=1`）。
 
 ## POST `/scratch_card_rec/list`
 
-| 欄位 | 必填 | 約束 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `page` / `perpage` | 是 | integer | perpage 1–1000 |
+| `start_at` / `end_at` | 是 | integer | Unix 秒 |
+| `status` | 否 | string | `PENDING`、`CLAIMED`、`SCRATCHED` |
+| `acc` | 否 | string | |
+| `lang` | 否 | string | BCP 47，影響名稱欄 |
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
 |---|---|---|
-| `page` / `perpage` | 是 | perpage 1–1000 |
-| `start_at` / `end_at` | 是 | |
-| `status` | 否 | `PENDING` \| `CLAIMED` \| `SCRATCHED` |
-| `acc` | 否 | |
-| `lang` | 否 | BCP 47 |
+| `row_count` | integer | 總筆數 |
+| `page_count` | integer | 總頁數 |
+| `list` | array | 票券列 |
+| `summary` | object | 同篩選範圍之統計（不受 `status` 限制） |
+
+`list[]`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `sn` | string | `SC_{id}` |
+| `activity_name` | string | 活動名稱 |
+| `card_code` | string | 卡面代碼 |
+| `card_name` | string | 卡面名稱 |
+| `prize_level` | string | 獎項等級 |
+| `prize_amount` | number | 獎金 |
+| `status` | string | `PENDING`、`CLAIMED`、`SCRATCHED` |
+| `player_acc` | string | 不含前綴；未領取可為空 |
+| `member` | object \| null | 玩家摘要；未領取為 null |
+| `claimed_at` | integer | 領取時間，Unix 秒 |
+| `scratched_at` | integer | 刮開時間，Unix 秒 |
+
+`summary`：
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `total_count` | number | 票數 |
+| `pending_count` | number | 未領取 |
+| `claimed_count` | number | 已領未刮 |
+| `scratched_count` | number | 已刮 |
+| `total_prize` | number | 獎金合計 |
+| `scratched_prize` | number | 已派獎金（對帳數） |
+</Card>

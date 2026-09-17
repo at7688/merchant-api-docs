@@ -3,85 +3,86 @@ title: Players
 description: Create, balance, login, logout.
 ---
 
-Inner `acc` excludes the agent prefix. Timestamps are Unix seconds.
+Inner `acc` excludes the agent prefix. Times are Unix seconds. Envelope: [Protocol](/en/protocol). Tables below describe `data`.
 
 ## POST `/player/add`
 
-| Field | Required | Type | Constraints |
+`ACC_EXIST` means the account already exists.
+
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | yes | string | alphanum, 6–60, stored lowercase |
-| `name` | yes | string | ≤ 30 |
+| `acc` | yes | string | Player id, alphanum 6–60, stored lowercase |
+| `name` | yes | string | Display name, ≤ 30 |
 
 ```json
 { "acc": "jordan", "name": "Amy" }
 ```
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `acc` | string | Full account `{agent_acc}_{acc}` |
+| `player_acc` | string | Unprefixed player id |
+| `player_id` | integer | Internal id |
 
 ```json
 {
   "code": "OK",
-  "data": {
-    "acc": "kiwi01_jordan",
-    "player_acc": "jordan",
-    "player_id": 123
-  }
+  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }
 }
 ```
-
-Subsequent requests still send `jordan`. `ACC_EXIST` means the account already exists.
+</Card>
 
 ## POST `/player/balance`
 
-Platform balance. Transfer wallet only.
+Transfer wallet only.
 
-| Field | Required | Type | Constraints |
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | yes | string | alphanum, 6–60 |
+| `acc` | yes | string | Player id |
+</Card>
 
-`data`: `currency`, `balance`.
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `currency` | string | e.g. `TWD` |
+| `balance` | number | Platform balance |
+</Card>
 
 ## POST `/player/login`
 
-Issues a lobby or game URL. `ip` is the player address.
+`ip` is the player address.
 
-| Field | Required | Type | Constraints |
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | yes | string | alphanum, 6–60 |
+| `acc` | yes | string | Player id |
 | `lang` | yes | string | BCP 47 |
-| `ip` | yes | string | IPv4 or IPv6 |
-| `device` | yes | string | `DESKTOP` \| `MOBILE` |
-| `game_code` | no | string | omitted → lobby |
-| `return_url` | no | string | valid URL |
+| `ip` | yes | string | Player IPv4/IPv6 |
+| `device` | yes | string | `DESKTOP` or `MOBILE` |
+| `game_code` | no | string | Omitted → lobby |
+| `return_url` | no | string | Valid URL |
+</Card>
 
-```json
-{
-  "acc": "jordan",
-  "lang": "en",
-  "ip": "203.0.113.10",
-  "device": "MOBILE",
-  "game_code": "MLCQ"
-}
-```
-
-```json
-{ "code": "OK", "data": { "url": "https://example/?token=..." } }
-```
-
-The client opens `data.url` without altering `token`.
-
-| code | Condition |
-|---|---|
-| `ACC_NOT_FOUND` | Player missing |
-| `ACC_NOT_ACTIVE` | Inactive |
-| `ACC_SUSPEND` | Suspended |
-| `GAME_NOT_FOUND` | Invalid game |
-| `GAME_MAINTAIN` | Maintenance |
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `url` | string | Lobby or game URL including `token`. Open as-is |
+</Card>
 
 ## POST `/player/logout`
 
-| Field | Required | Description |
-|---|---|---|
-| `acc` | no | Omitted: all members under the merchant |
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `acc` | no | string | Omitted: all members under the merchant |
+</Card>
 
-```json
-{ "acc": "jordan" }
-```
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `count` | integer | Members logged out |
+</Card>

@@ -83,6 +83,8 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 ## Response
 
+All successful merchant APIs use this envelope. Per-endpoint `data` fields are on each page.
+
 ```json
 {
   "api_version": "v1",
@@ -95,9 +97,11 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 | Field | Type | Description |
 |---|---|---|
-| `code` | string | Success value is only `OK` |
-| `data` | object \| array \| null | Not a string |
-| `trace_id` | string | Log correlation id |
+| `api_version` | string | Currently `v1` |
+| `message` | string | Extra text; usually empty |
+| `code` | string | Outcome. Success is only `OK` |
+| `data` | object \| array \| null | Payload on success; usually `null` on error |
+| `trace_id` | string | Request id for logs and incidents |
 
 Parse JSON, then read `code`. Do not abort solely on HTTP status without reading the body.
 

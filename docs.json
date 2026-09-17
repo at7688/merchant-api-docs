@@ -1,12 +1,13 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "palm",
   "name": "AT Gaming",
   "colors": {
-    "primary": "#0F766E",
-    "light": "#14B8A6",
-    "dark": "#115E59"
+    "primary": "#C2410C",
+    "light": "#FB923C",
+    "dark": "#9A3412"
   },
+  "css": "/style.css",
   "favicon": "/favicon.svg",
   "navigation": {
     "languages": [

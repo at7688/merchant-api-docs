@@ -78,6 +78,8 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 ## 响应
 
+各接口成功时均为该报文。`data` 字段见各接口页。
+
 ```json
 {
   "api_version": "v1",
@@ -90,9 +92,11 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `code` | string | 成功值仅为 `OK` |
-| `data` | object \| array \| null | 非字符串 |
-| `trace_id` | string | 日志关联标识 |
+| `api_version` | string | 当前为 `v1` |
+| `message` | string | 附加说明，多为空字符串 |
+| `code` | string | 业务结果。成功仅为 `OK` |
+| `data` | object \| array \| null | 成功时的数据本体。错误时多为 `null` |
+| `trace_id` | string | 本次请求标识 |
 
 客户端须先解析 JSON，再读取 `code`。
 

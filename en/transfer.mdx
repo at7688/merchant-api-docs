@@ -3,56 +3,89 @@ title: Transfers
 description: Transfer-wallet credit and debit.
 ---
 
-Transfer wallet only. `sn` is the idempotency key: one business event maps to one `sn`.
-
-| Field | Constraints |
-|---|---|
-| `sn` | alphanum plus `_` `-`, 6–120 |
-| `acc` | player id, no prefix |
-| `amount` | ≠ 0. Positive = credit to platform; negative = debit from platform |
-| time | Unix seconds |
+Transfer wallet only. `sn` is the idempotency key. Envelope: [Protocol](/en/protocol). `agent` / `member`: end of page.
 
 ## POST `/transfer/add`
+
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `sn` | yes | string | Merchant reference, 6–120, alphanum plus `_` `-` |
+| `acc` | yes | string | Player id, no prefix |
+| `amount` | yes | number | ≠ 0. Positive = credit to platform; negative = debit |
 
 ```json
 { "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
 ```
+</Card>
 
-Debit example: `"amount": -50`.
-
-```json
-{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
-```
-
-`balance` is the platform balance after this transfer.
-
-| code | Meaning | Handling |
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
 |---|---|---|
-| `OK` | Posted | Do not reuse `sn` |
-| `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
-| `BALANCE_INSUFFICIENT` | Debit exceeds balance | Not posted |
-| `ACC_NOT_FOUND` | Player missing | Not posted |
+| `currency` | string | Currency |
+| `balance` | number | Platform balance after this transfer |
 
-HTTP 500 or a dropped connection is undetermined. `/transfer/check` with the **original** `sn`: a row means posted; `TRANSFER_NOT_FOUND` allows a new `sn`. Replacing `sn` immediately after 500 can double-post.
+| code | Description |
+|---|---|
+| `TRANSFER_SN_EXIST` | `sn` already posted; call `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | Debit exceeds balance |
+| `ACC_NOT_FOUND` | Player missing |
+
+HTTP 500: `/transfer/check` with the original `sn`.
+</Card>
 
 ## POST `/transfer/check`
 
-```json
-{ "sn": "T20260917-0001", "acc": "jordan" }
-```
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `sn` | yes | string | |
+| `acc` | yes | string | |
+</Card>
 
-Missing record: `TRANSFER_NOT_FOUND`.
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | Transfer id |
+| `amount` | number | Amount |
+| `balance` | number | Balance after this transfer |
+| `created_at` | integer | Unix seconds |
+| `agent` | object | Merchant profile |
+| `member` | object | Player profile |
+
+Missing: `TRANSFER_NOT_FOUND`.
+</Card>
 
 ## POST `/transfer/list`
 
-Rate: 10 calls per merchant per minute.
+10 calls / merchant / minute.
 
-| Field | Required | Constraints |
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `page` | yes | integer | ≥ 1 |
+| `perpage` | yes | integer | 1–100 |
+| `start_at` / `end_at` | yes | integer | Unix seconds; `end_at` > `start_at` |
+| `acc` | no | string | |
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
 |---|---|---|
-| `page` | yes | ≥ 1 |
-| `perpage` | yes | 1–100 |
-| `start_at` | yes | Unix seconds |
-| `end_at` | yes | greater than `start_at` |
-| `acc` | no | |
+| `row_count` | integer | Total rows |
+| `page_count` | integer | Total pages |
+| `list` | array | Newest first |
 
-`data`: `list`, `row_count`, `page_count`.
+`list[]`: `sn`, `amount`, `balance`, `created_at`, `agent`, `member` — same meaning as `/transfer/check`.
+</Card>
+
+## Objects `agent` / `member`
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer | Internal id |
+| `acc` | string | Full account |
+| `name` | string | Display name |
+| `player_type` | string | `AGENT` or `MEMBER` |
+| `currency` | string | Currency |
+| `sub_role` | string | Sub-role; may be empty |

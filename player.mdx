@@ -3,56 +3,88 @@ title: 玩家
 description: 建立、餘額、登入、登出。
 ---
 
-內層 `acc` 不含代理前綴。時間欄位為 Unix 秒。
+內層 `acc` 不含代理前綴。時間為 Unix 秒。成功時外層信封見 [傳輸協議](/protocol)，下列僅列 `data`。
 
 ## POST `/player/add`
 
-建立會員。
+建立會員。`ACC_EXIST` 表示帳號已存在。
 
-| 欄位 | 必填 | 型別 | 約束 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
 |---|---|---|---|
-| `acc` | 是 | string | 英數，6–60，儲存為小寫 |
-| `name` | 是 | string | 長度 ≤ 30 |
+| `acc` | 是 | string | 玩家帳號。英數 6–60，儲存為小寫 |
+| `name` | 是 | string | 顯示名稱。長度 ≤ 30 |
 
 ```json
 { "acc": "jordan", "name": "Amy" }
 ```
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `acc` | string | 平台完整帳號，`{agent_acc}_{acc}` |
+| `player_acc` | string | 不含前綴之玩家帳號 |
+| `player_id` | integer | 平台內部識別 |
 
 ```json
 {
+  "api_version": "v1",
+  "message": "",
   "code": "OK",
   "data": {
     "acc": "kiwi01_jordan",
     "player_acc": "jordan",
     "player_id": 123
-  }
+  },
+  "trace_id": "3f2c1a0b-...."
 }
 ```
 
-後續請求仍傳送 `jordan`。`ACC_EXIST` 表示帳號已存在，可視為建立完成。
+後續請求仍傳送 `jordan`。
+</Card>
 
 ## POST `/player/balance`
 
-查詢平台餘額。適用於轉帳錢包。單錢包餘額由商戶接口提供。
+查詢平台餘額。適用於轉帳錢包。
 
-| 欄位 | 必填 | 型別 | 約束 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
 |---|---|---|---|
-| `acc` | 是 | string | 英數，6–60 |
+| `acc` | 是 | string | 玩家帳號。英數 6–60 |
 
-回應 `data`：`currency`、`balance`。
+```json
+{ "acc": "jordan" }
+```
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `currency` | string | 幣別，例如 `TWD` |
+| `balance` | number | 平台餘額 |
+
+```json
+{
+  "code": "OK",
+  "data": { "currency": "TWD", "balance": 1680.4 }
+}
+```
+</Card>
 
 ## POST `/player/login`
 
 核發大廳或遊戲 URL。`ip` 為玩家位址。
 
-| 欄位 | 必填 | 型別 | 約束 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
 |---|---|---|---|
-| `acc` | 是 | string | 英數，6–60 |
+| `acc` | 是 | string | 玩家帳號。英數 6–60 |
 | `lang` | 是 | string | BCP 47，例如 `zh-TW` |
-| `ip` | 是 | string | IPv4 或 IPv6 |
-| `device` | 是 | string | `DESKTOP` \| `MOBILE` |
-| `game_code` | 否 | string | 省略則進入大廳 |
-| `return_url` | 否 | string | 合法 URL |
+| `ip` | 是 | string | 玩家 IPv4 或 IPv6 |
+| `device` | 是 | string | `DESKTOP` 或 `MOBILE` |
+| `game_code` | 否 | string | 遊戲代碼。省略則進入大廳 |
+| `return_url` | 否 | string | 離開遊戲後之返回 URL |
 
 ```json
 {
@@ -63,27 +95,49 @@ description: 建立、餘額、登入、登出。
   "game_code": "MLCQ"
 }
 ```
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `url` | string | 大廳或遊戲完整 URL，已含 `token`、`lang`。用戶端直接開啟，不得修改 `token` |
 
 ```json
-{ "code": "OK", "data": { "url": "https://example/?token=...&lang=zh-TW" } }
+{
+  "code": "OK",
+  "data": {
+    "url": "https://game.example/mlcq?token=eyJ...&lang=zh-TW&return_url="
+  }
+}
 ```
 
-用戶端開啟 `data.url`，不得修改 `token`。
-
-| code | 條件 |
+| code | 說明 |
 |---|---|
 | `ACC_NOT_FOUND` | 玩家不存在 |
 | `ACC_NOT_ACTIVE` | 玩家未啟用 |
 | `ACC_SUSPEND` | 玩家已暫停 |
 | `GAME_NOT_FOUND` | 遊戲代碼無效 |
 | `GAME_MAINTAIN` | 維護中 |
+</Card>
 
 ## POST `/player/logout`
 
-| 欄位 | 必填 | 說明 |
-|---|---|---|
-| `acc` | 否 | 省略時登出該商戶全部會員 |
+<Card title="請求" icon="arrow-up-from-bracket">
+| 欄位 | 必填 | 型別 | 說明 |
+|---|---|---|---|
+| `acc` | 否 | string | 省略時登出該商戶全部會員 |
 
 ```json
 { "acc": "jordan" }
 ```
+</Card>
+
+<Card title="回應" icon="arrow-down-to-bracket">
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `count` | integer | 實際登出之會員數 |
+
+```json
+{ "code": "OK", "data": { "count": 1 } }
+```
+</Card>

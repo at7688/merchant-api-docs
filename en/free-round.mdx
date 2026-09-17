@@ -3,64 +3,42 @@ title: Granted spins
 description: Grant, cancel, list.
 ---
 
-Issues free rounds on a given game. Rounds do not debit the player and do not accrue JP.
-
-On seamless wallets, a win callback may still be issued (payout only). The merchant credits by `sn`.
-
-`bet_amount` is the nominal stake. It must be > 0 and within that player’s min/max for the game (`BET_AMOUNT_RANGE`).
+Free rounds: no player debit, no JP. A win callback may still fire. Envelope: [Protocol](/en/protocol).
 
 ## POST `/free_round/add`
 
-`sn` is idempotent. Repeats return `existed: true` without a second grant.
+`sn` is idempotent.
 
-```json
-{
-  "sn": "FR-20260917-001",
-  "acc": "jordan",
-  "game_code": "MLCQ",
-  "bet_amount": 10,
-  "count": 5,
-  "expire_at": 1759300000
-}
-```
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `sn` | yes | string | Campaign id, ≤ 80 |
+| `acc` | yes | string | Player id, no prefix |
+| `game_code` | yes | string | Game |
+| `bet_amount` | yes | number | Nominal stake, > 0 |
+| `count` | yes | integer | 1–100 |
+| `expire_at` | yes | integer | Unix seconds; `0` = default TTL |
+</Card>
 
-| Field | Required | Constraints |
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
 |---|---|---|
-| `sn` | yes | ≤ 80 |
-| `acc` | yes | no prefix |
-| `game_code` | yes | valid game |
-| `bet_amount` | yes | > 0 |
-| `count` | yes | 1–100 |
-| `expire_at` | yes | Unix seconds; `0` = default TTL |
+| `sn` | string | Campaign id |
+| `existed` | boolean | `true` if this `sn` was already granted |
 
-```json
-{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
-```
-
-| code | Definition |
-|---|---|
-| `FREE_ROUND_CAP` | Monthly nominal cap (count × stake) exceeded |
-| `BET_AMOUNT_RANGE` | Stake outside min/max |
-| `ACC_NOT_FOUND` | Player missing |
-| `GAME_NOT_FOUND` | Invalid game |
-
-Remaining rounds are decremented by the platform on each spin.
+Codes: `FREE_ROUND_CAP`, `BET_AMOUNT_RANGE`, `ACC_NOT_FOUND`, `GAME_NOT_FOUND`.
+</Card>
 
 ## POST `/free_round/cancel`
 
-```json
-{ "sn": "FR-20260917-001" }
-```
-
-Remaining rounds become zero. Consumed rounds remain in bet history. Unknown campaign: `ACC_NOT_FOUND`.
+Request: `{ "sn": "..." }`. Response `data` is `null`. Remaining rounds become 0.
 
 ## POST `/free_round/list`
 
-| Field | Required | Constraints |
-|---|---|---|
-| `page` | yes | ≥ 1 |
-| `perpage` | yes | 1–100 |
-| `acc` | no | |
-| `start_at` / `end_at` | no | Unix seconds |
+<Card title="Request" icon="arrow-up-from-bracket">
+`page` ≥ 1, `perpage` 1–100, optional `acc`, `start_at`, `end_at`.
+</Card>
 
-List fields: `sn`, `game_code`, `bet_amount`, `total`, `remain`, `expire_at`, `created_at`.
+<Card title="Response" icon="arrow-down-to-bracket">
+`row_count`, `page_count`, `list[]`: `sn`, `game_code`, `bet_amount` (number), `total` / `remain` (integer), `expire_at`, `created_at` (Unix seconds).
+</Card>
