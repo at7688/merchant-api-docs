@@ -52,5 +52,11 @@
     "socials": {
       "github": "https://github.com/at7688/merchant-api-docs"
     }
+  },
+  "seo": {
+    "metatags": {
+      "robots": "noindex, nofollow"
+    },
+    "indexing": "navigable"
   }
 }
