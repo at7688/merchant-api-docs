@@ -1,0 +1,56 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "AT Gaming Merchant API",
+  "colors": {
+    "primary": "#0F766E",
+    "light": "#14B8A6",
+    "dark": "#115E59"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "languages": [
+      {
+        "language": "zh-Hant",
+        "default": true,
+        "groups": [
+          {
+            "group": "開始",
+            "pages": ["index"]
+          }
+        ]
+      },
+      {
+        "language": "zh-CN",
+        "groups": [
+          {
+            "group": "开始",
+            "pages": ["zh-CN/index"]
+          }
+        ]
+      },
+      {
+        "language": "en",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": ["en/index"]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "AT Gaming",
+        "href": "https://at-gaming.app"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/at7688/merchant-api-docs"
+    }
+  }
+}
