@@ -3,7 +3,7 @@ title: Callbacks
 description: Platform callbacks. Timeout 15 seconds.
 ---
 
-Seamless wallet only. Platform `POST` `{ "data": "<hex>" }`. Same ApiKey. [Protocol](/en/protocol).
+Seamless wallet only. Platform `POST`s to `{MerchantApiUrl}{path}` (e.g. `https://merchant.example/player/bet`). Base must not end with `/`. Body `{ "data": "<hex>" }` with no `agent_acc`. Same ApiKey. [Protocol](/en/protocol). Timeout 15 seconds. Response JSON must include top-level `code`. bet/win `data.original_balance` and `data.balance` are numbers.
 
 <Warning>
 Success: `code` is `OK`.

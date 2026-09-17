@@ -3,13 +3,15 @@ title: 回調
 description: 平台對商戶之回調。Timeout 15 秒。
 ---
 
-適用於單錢包。平台對商戶 base URL 發出 `POST`：
+適用於單錢包。平台對 `{MerchantApiUrl}{path}` 發出 `POST`，例如 `https://merchant.example/player/bet`。`MerchantApiUrl` 不得以 `/` 結尾。
 
 ```json
 { "data": "<AES-GCM hex>" }
 ```
 
-解密金鑰與商戶 API 之 ApiKey 相同。排列見 [傳輸協議](/protocol)。
+無 `agent_acc`。解密金鑰與商戶 API 之 ApiKey 相同。排列見 [傳輸協議](/protocol)。`Content-Type: application/json`。逾時 15 秒。
+
+商戶回應須為 JSON，頂層必有 `code`。bet／win 之 `data.original_balance`、`data.balance` 為 number。其餘頂層欄位忽略。
 
 <Warning>
 成功時 `code` 為 `OK`。

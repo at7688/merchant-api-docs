@@ -3,14 +3,25 @@ title: Records
 description: Bets, JP, reports, scratch cards.
 ---
 
-Read-only. Unix seconds. `end_at` > `start_at`. Envelope: [Protocol](/en/protocol). Profiles: [Transfers](/en/transfer).
+Read-only. `end_at` > `start_at`. Envelope: [Protocol](/en/protocol). Profiles: [Transfers](/en/transfer).
 
-Rate 10 / merchant / minute: `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`.
+Time columns are **not** always bet time:
+
+| Endpoint | `start_at` / `end_at` |
+|---|---|
+| `/bet_rec/list` | `updated_at` (includes settlement). Filtering by bet time misses bets settled inside the window |
+| `/jp_rec/list` | `created_at` |
+| `/bet_report/list` | `beted_date` or `settled_date` / minute, Unix seconds at UTC+8 00:00 |
+| `/scratch_card_rec/list` | `updated_at` |
+| `/transfer/list` | `created_at` |
+| `/free_round/list` | `created_at` |
+
+Rate 10 / merchant / minute: `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`. Empty `acc` means no player filter.
 
 ## POST `/game/list`
 
 <Card title="Response" icon="arrow-down-to-bracket">
-`data.list[]`: `id` (integer), `code` (string, login `game_code`), `name` (object, locale keys), `game_category_code`, `game_type_code` (string).
+Active games only (`is_active=true`). Maintenance games still appear; login returns `GAME_MAINTAIN`. `data.list[]`: `id` (integer), `code` (string, login `game_code`), `name` (object, locale keys), `game_category_code`, `game_type_code` (string).
 </Card>
 
 ## POST `/bet_rec/list`
@@ -51,7 +62,7 @@ Request: `sn`, `lang` (BCP 47). Response `data.url`: result-page URL.
 
 ## POST `/bet_rec/query`
 
-Request: `sns` (1–100). Response `list[]`: `sn`, `status` (`PENDING` / `PROCESSING` / `FINISH` / `CANCEL` / `UNKNOWN`). `UNKNOWN` must not trigger an automatic refund.
+Request: `sns` (1–100). Response `list[]`: `sn`, `status` (`PENDING` including accepted-not-yet-written, `PROCESSING`, `FINISH`, `CANCEL`, or `UNKNOWN`). If the first six characters of `sn` are `YYMMDD` (UTC+8), they prune partitions. `UNKNOWN` must not trigger an automatic refund.
 
 ## POST `/bet_report/list`
 

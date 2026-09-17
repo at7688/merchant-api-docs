@@ -7,7 +7,7 @@ description: 建立、餘額、登入、登出。
 
 ## POST `/player/add`
 
-建立會員。`ACC_EXIST` 表示帳號已存在。
+建立會員。幣別、JP 開關與單注上下限自該商戶代理複製。`ACC_EXIST` 表示帳號已存在。
 
 <Card title="請求" icon="arrow-up-from-bracket">
 | 欄位 | 必填 | 型別 | 說明 |
@@ -83,7 +83,7 @@ description: 建立、餘額、登入、登出。
 | `lang` | 是 | string | BCP 47，例如 `zh-TW` |
 | `ip` | 是 | string | 玩家 IPv4 或 IPv6 |
 | `device` | 是 | string | `DESKTOP` 或 `MOBILE` |
-| `game_code` | 否 | string | 遊戲代碼。省略則進入大廳 |
+| `game_code` | 否 | string | 遊戲代碼，大小寫不拘（內部轉大寫）。省略或空字串進入大廳 |
 | `return_url` | 否 | string | 離開遊戲後之返回 URL |
 
 ```json

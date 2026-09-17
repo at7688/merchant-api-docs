@@ -11,6 +11,22 @@ description: 封套、AES-256-GCM、HTTP 與 code。
 | 標頭 | `Content-Type: application/json` |
 | 編碼 | UTF-8 |
 | URL | `{base}{path}`，例如 `https://api.at-dev.app/api/v1/player/add` |
+| 路徑前綴 | `/api/v1` |
+| 額外標頭 | 不需要。來源 IP 取 `CF-Connecting-IP`，否則 `X-Forwarded-For`／連線位址，須在白名單 |
+
+## 慣例
+
+| 項目 | 規定 |
+|---|---|
+| `agent_acc` | 比對前轉小寫、去首尾空白 |
+| `acc` | 去首尾空白後轉小寫，再與代理帳號組成 `{agent_acc}_{acc}` |
+| `game_code` | 去空白後轉大寫。登入、贈送旋轉皆然 |
+| 時間 | Unix **秒**（10 位）。帳務日界為 **UTC+8**（`Asia/Taipei`）當日 00:00 |
+| 金額 | JSON number。小數最多兩位（資料庫 `DECIMAL`） |
+| 選填篩選 | 空字串或 0 表示不套該條件 |
+| 驗證失敗 | `code` 為 `PARAM_INVALID` |
+
+回調 base URL 與路徑直接串接：`{MerchantApiUrl}/player/bet`。base **不得**以 `/` 結尾，否則會出現 `//player/bet`。
 
 ### 外層
 
@@ -44,7 +60,7 @@ UTF-8 JSON 物件，欄位為 snake_case。該位元組序列為 GCM 明文。�
 | tag | 16 bytes |
 | 密文排列 | `nonce ‖ ciphertext ‖ tag`，再編碼為 hex |
 
-單錢包回調使用同一金鑰與同一排列；平台請求僅含 `{ "data": "<hex>" }`。
+單錢包回調使用同一金鑰與同一排列。平台請求本文僅 `{ "data": "<hex>" }`，**不含** `agent_acc`。逾時 15 秒（含連線與讀取）。商戶回應須為 JSON，頂層含 `code`；`data` 欄位見 [回調](/callback)。HTTP 狀態須為 2xx，否則平台視為結果未決。
 
 ### 參考向量
 

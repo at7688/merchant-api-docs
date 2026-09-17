@@ -11,6 +11,22 @@ description: 报文、AES-256-GCM、HTTP 与 code。
 | 标头 | `Content-Type: application/json` |
 | 编码 | UTF-8 |
 | URL | `{base}{path}` |
+| 路径前缀 | `/api/v1` |
+| 额外头 | 不需要。来源 IP 取 `CF-Connecting-IP`，否则 `X-Forwarded-For`／连接地址，须在白名单 |
+
+## 惯例
+
+| 项目 | 规定 |
+|---|---|
+| `agent_acc` | 去空白后转小写 |
+| `acc` | 去空白后转小写，再拼成 `{agent_acc}_{acc}` |
+| `game_code` | 去空白后转大写 |
+| 时间 | Unix **秒**。账务日界为 **UTC+8**（`Asia/Taipei`）当日 00:00 |
+| 金额 | JSON number，小数最多两位 |
+| 选填筛选 | 空字符串或 0 表示不套该条件 |
+| 验证失败 | `code` 为 `PARAM_INVALID` |
+
+回调 base 与路径直接拼接：`{MerchantApiUrl}/player/bet`。base **不得**以 `/` 结尾。
 
 ### 外层
 
@@ -41,7 +57,7 @@ UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。
 | tag | 16 bytes |
 | 密文排列 | `nonce ‖ ciphertext ‖ tag`，再编码为 hex |
 
-单一钱包回调使用同一密钥与同一排列。
+单一钱包回调使用同一密钥与同一排列。平台报文仅 `{ "data": "<hex>" }`，**不含** `agent_acc`。超时 15 秒。商户响应须为 JSON，顶层含 `code`。HTTP 状态须为 2xx，否则平台视为结果未决。
 
 ### 参考向量
 

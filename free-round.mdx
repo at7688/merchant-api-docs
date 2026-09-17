@@ -3,9 +3,17 @@ title: 贈送旋轉
 description: 發放、取消、查詢。
 ---
 
-向指定玩家發放指定遊戲之免費旋轉。不扣除玩家餘額、不計入 JP。單錢包結算時仍可能發出 win 回調。成功信封見 [傳輸協議](/protocol)。
+向指定玩家發放免費旋轉。不扣除玩家餘額、不計入 JP。單錢包結算時仍可能發出 win 回調。成功信封見 [傳輸協議](/protocol)。
 
-`bet_amount` 為名目注額，須大於 0，且位於該玩家該遊戲單注上下限內。
+| 項目 | 規定 |
+|---|---|
+| `sn` | 全站唯一。他商戶已使用則 `existed=true` 且不改本筆 |
+| `game_code` | 轉大寫。空字串表示不限遊戲（消耗時任一遊戲皆可扣次數） |
+| `expire_at` | `0` 或未指定＝自此刻起 30 日。超過 30 日之時間戳會被截成 30 日 |
+| 月額度 | 名目合計 `bet_amount × count`，日曆月以 **UTC+8** 月初起算。後台未設上限則不檢查 |
+| 注額 | 若指定遊戲，須落在該玩家該遊戲 `bet_min`／`bet_max` |
+
+消耗順序：同一玩家多筆未用完紀錄依發放先後（`id` 升序）。
 
 ## POST `/free_round/add`
 
@@ -16,7 +24,7 @@ description: 發放、取消、查詢。
 |---|---|---|---|
 | `sn` | 是 | string | 活動單號，長度 ≤ 80 |
 | `acc` | 是 | string | 玩家帳號，不含前綴 |
-| `game_code` | 是 | string | 遊戲代碼 |
+| `game_code` | 否 | string | 遊戲代碼，轉大寫。空＝不限遊戲 |
 | `bet_amount` | 是 | number | 名目注額，> 0 |
 | `count` | 是 | integer | 次數，1–100 |
 | `expire_at` | 是 | integer | 到期 Unix 秒；`0` 表示系統預設 |
@@ -38,6 +46,7 @@ description: 發放、取消、查詢。
 | `BET_AMOUNT_RANGE` | 注額超出上下限 |
 | `ACC_NOT_FOUND` | 玩家不存在 |
 | `GAME_NOT_FOUND` | 遊戲代碼無效 |
+| `WRONG_OPERATION` | 參數無法發放（次數、注額、帳號） |
 </Card>
 
 ## POST `/free_round/cancel`

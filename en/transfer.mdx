@@ -3,7 +3,7 @@ title: Transfers
 description: Transfer-wallet credit and debit.
 ---
 
-Transfer wallet only. `sn` is the idempotency key. Envelope: [Protocol](/en/protocol). `agent` / `member`: end of page.
+Transfer wallet only. `sn` is unique **per merchant**. Envelope: [Protocol](/en/protocol). `agent` / `member`: end of page. `start_at` / `end_at` on the list API filter `created_at`.
 
 ## POST `/transfer/add`
 

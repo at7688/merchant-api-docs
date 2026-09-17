@@ -11,6 +11,22 @@ description: Envelope, AES-256-GCM, HTTP vs code.
 | Header | `Content-Type: application/json` |
 | Encoding | UTF-8 |
 | URL | `{base}{path}` |
+| Path prefix | `/api/v1` |
+| Extra headers | None. Client IP is `CF-Connecting-IP`, else `X-Forwarded-For` / peer, and must be whitelisted |
+
+## Conventions
+
+| Item | Rule |
+|---|---|
+| `agent_acc` | Trimmed, lowercased |
+| `acc` | Trimmed, lowercased, stored as `{agent_acc}_{acc}` |
+| `game_code` | Trimmed, uppercased |
+| Time | Unix **seconds**. Accounting day cut is **UTC+8** (`Asia/Taipei`) 00:00 |
+| Amounts | JSON numbers, up to 2 decimal places |
+| Optional filters | Empty string or 0 means “do not apply” |
+| Validation failure | `code` `PARAM_INVALID` |
+
+Callback URL is `{MerchantApiUrl}/player/bet`. The base must **not** end with `/`.
 
 ### Outer body
 
@@ -44,7 +60,7 @@ UTF-8 JSON object, snake_case. Those bytes are the GCM plaintext.
 | tag | 16 bytes |
 | Layout | `nonce ‖ ciphertext ‖ tag`, then hex |
 
-Seamless-wallet callbacks use the same key and layout. The platform body is `{ "data": "<hex>" }`.
+Seamless-wallet callbacks use the same key and layout. The platform body is only `{ "data": "<hex>" }` — no `agent_acc`. Timeout 15 seconds. The merchant response must be JSON with top-level `code`. HTTP status must be 2xx or the outcome is treated as undetermined.
 
 ### Reference vector
 

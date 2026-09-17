@@ -3,7 +3,7 @@ title: 回调
 description: 平台对商户的回调。超时 15 秒。
 ---
 
-适用于单一钱包。平台对商户 base URL 发出 `POST` `{ "data": "<hex>" }`。密钥与商户 ApiKey 相同。见 [传输协议](/zh-CN/protocol)。
+适用于单一钱包。平台对 `{MerchantApiUrl}{path}` 发出 `POST`，例如 `https://merchant.example/player/bet`。base 不得以 `/` 结尾。报文 `{ "data": "<hex>" }`，不含 `agent_acc`。密钥与商户 ApiKey 相同。见 [传输协议](/zh-CN/protocol)。超时 15 秒。响应须为 JSON，顶层含 `code`。bet／win 的 `data.original_balance`、`data.balance` 为 number。
 
 <Warning>
 成功时 `code` 为 `OK`。

@@ -5,6 +5,16 @@ description: Grant, cancel, list.
 
 Free rounds: no player debit, no JP. A win callback may still fire. Envelope: [Protocol](/en/protocol).
 
+| Item | Rule |
+|---|---|
+| `sn` | Globally unique. If already used, `existed=true` and the row is unchanged |
+| `game_code` | Uppercased. Empty = any game when consumed |
+| `expire_at` | `0` = 30 days from now; later timestamps are capped at 30 days |
+| Monthly cap | Nominal `bet_amount × count`, calendar month in **UTC+8**. Unset cap = unlimited |
+| Stake | If a game is set, must lie within that player’s `bet_min` / `bet_max` |
+
+Consumption order: oldest grant first (`id` ascending).
+
 ## POST `/free_round/add`
 
 `sn` is idempotent.

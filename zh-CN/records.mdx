@@ -3,13 +3,24 @@ title: 游戏记录
 description: 注单、JP、报表、刮刮卡。
 ---
 
-查询接口不变更余额。时间为 Unix 秒。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 同 [转账](/zh-CN/transfer)。
+查询接口不变更余额。`end_at` 须大于 `start_at`。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 同 [转账](/zh-CN/transfer)。
 
-下列接口每商户每分钟 10 次。`acc` 不含前缀。
+时间字段并非每支都用下注时间：
+
+| 接口 | `start_at`／`end_at` 对应 |
+|---|---|
+| `/bet_rec/list` | `updated_at`（含结算）。只用下注时间会漏掉区间内才结算的单 |
+| `/jp_rec/list` | `created_at` |
+| `/bet_report/list` | `beted_date` 或 `settled_date`／分钟，值为 UTC+8 当日 00:00 的 Unix 秒 |
+| `/scratch_card_rec/list` | `updated_at` |
+| `/transfer/list` | `created_at` |
+| `/free_round/list` | `created_at` |
+
+下列接口每商户每分钟 10 次。`acc` 空表示不筛玩家。
 
 ## POST `/game/list`
 
-响应 `list[]`：`id`（integer）、`code`（登录 `game_code`）、`name`（object，语种为键）、`game_category_code`、`game_type_code`。
+仅返回 `is_active=true` 的游戏。维护中游戏仍出现在清单，登录时才返回 `GAME_MAINTAIN`。响应 `list[]`：`id`（integer）、`code`（登录 `game_code`）、`name`（object，语种为键）、`game_category_code`、`game_type_code`。
 
 ## POST `/bet_rec/list`
 
