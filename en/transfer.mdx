@@ -3,43 +3,54 @@ title: Transfers
 description: Credit and debit. sn must be unique.
 ---
 
-**Transfer wallet only.** `sn`: alphanum plus `_` `-`, length 6–120, unique. `amount` must not be 0; **positive credits, negative debits**.
+**Transfer wallet only.** Treat `sn` like a bank reference: one business event, one `sn`. We use it so retries are not double-posted.
+
+| | Rules |
+|---|---|
+| `sn` | alphanum plus `_` `-`, 6–120 |
+| `acc` | player id, no prefix |
+| `amount` | ≠ 0. Positive = credit to platform; negative = debit from platform |
+| time | Unix **seconds** |
 
 ## POST `/transfer/add`
 
-| Field | Required |
-|---|---|
-| `sn` | yes |
-| `acc` | yes |
-| `amount` | yes, ≠ 0 |
+Credit 100:
 
-Success `data`: `currency`, `balance` (after the transfer).
+```json
+{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
+```
 
-| code | What to do |
-|---|---|
-| `TRANSFER_SN_EXIST` | Same `sn` already processed — `/transfer/check` |
-| `BALANCE_INSUFFICIENT` | Debit exceeds balance |
-| `ACC_NOT_FOUND` | Player not found |
+Debit 50: `"amount": -50`.
 
-**HTTP 500**: unknown result. Call `/transfer/check` before retrying with a new `sn`.
+Success: `{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }` (`balance` after this transfer).
+
+<Steps>
+  <Step title="code = OK">
+    Posted. Never reuse this `sn`.
+  </Step>
+  <Step title="TRANSFER_SN_EXIST">
+    Already posted. `/transfer/check`. Do **not** create a new sn.
+  </Step>
+  <Step title="BALANCE_INSUFFICIENT">
+    Debit failed. New sn when the player has funds.
+  </Step>
+  <Step title="HTTP 500 / disconnect">
+    Unknown. `/transfer/check` with the **same** sn. Found → done. `TRANSFER_NOT_FOUND` → then a new sn is safe.
+  </Step>
+</Steps>
+
+<Warning>
+Do not immediately retry with a new `sn` after HTTP 500. That double-credits the player.
+</Warning>
 
 ## POST `/transfer/check`
 
-| Field | Required |
-|---|---|
-| `sn` | yes |
-| `acc` | yes |
+```json
+{ "sn": "T20260917-0001", "acc": "jordan" }
+```
 
-Missing: `TRANSFER_NOT_FOUND`. Success includes `sn`, `amount`, `balance`, `created_at`.
+Missing → `TRANSFER_NOT_FOUND`.
 
 ## POST `/transfer/list`
 
-| Field | Required | Notes |
-|---|---|---|
-| `page` | yes | ≥ 1 |
-| `perpage` | yes | 1–100 |
-| `start_at` | yes | Unix seconds |
-| `end_at` | yes | must be greater than `start_at` |
-| `acc` | no | |
-
-Success `data`: `list`, `row_count`, `page_count`.
+10 calls / merchant / minute. `page` ≥ 1, `perpage` 1–100, `start_at` / `end_at` required (`end_at` > `start_at`), `acc` optional.

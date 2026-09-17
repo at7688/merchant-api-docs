@@ -1,32 +1,39 @@
 ---
 title: 单钱包
-description: 平台调用商户。Timeout 15 秒。成功 code 必须是 OK。
+description: 平台调用你。Timeout 15 秒。
 ---
 
-单钱包商户必须提供 HTTPS base URL。平台会 **AES-GCM** 加密后 POST `{ "data": "<hex>" }`。
+仅单钱包商户。我们 POST `{ "data": "<hex>" }`，用同一把 ApiKey 解密。
 
-Timeout **15 秒**。超时平台**不会当下重试同一请求**。
+<Warning>
+成功必须 HTTP 200 且 `"code": "OK"`。回 `"200"` 会被当成失败。
+</Warning>
 
-成功请回 HTTP 200，且 `"code": "OK"`。**不要回 `"code": "200"`**。
+必须实现：`/player/balance`（查余额）、`/player/bet`（**扣款**）、`/player/win`（**加款**）、`/player/bet_refund`（退该笔下注）。Timeout **15 秒**。
 
-所有动钱请求都带 `sn`。同一 `sn` 重送必须回第一次的结果，不可再扣或再加。
+## 去重
+
+同一 `sn`：第一次执行并记账；第二次回第一次的结果，**不要再改余额**。玩家离线仍可能收到 `win`，不要拒绝。
 
 ## POST `{base}/player/balance`
 
-`timestamp`、`acc`（含前缀，如 `kiwi01_jordan`）、`player_acc`（去前缀）。成功 `data.balance`。
+`acc` 为完整账号（含前缀），`player_acc` 为去前缀。成功：`{ "code": "OK", "data": { "balance": 1680.4 } }`。
 
 ## POST `{base}/player/bet`
 
-`sn`（请去重）、`game_code`、`acc`（去前缀）、`name`、`amount`（扣除）、`beted_at`、`timestamp`。
-
-成功 `data`：`original_balance`（扣前）、`balance`（扣后）。余额不足回非 OK 的 `code`，HTTP 200。
+这里的 `acc` **无前缀**。`amount` 为扣除正数。成功 `original_balance`（扣前）、`balance`（扣后）。余额不足：HTTP 200 + `BALANCE_INSUFFICIENT`。
 
 ## POST `{base}/player/win`
 
-结算派奖（**加钱**）。玩家断线时仍可能送来。锦标赛派奖 `game_code` 为 `TOURNAMENT`。
-
-成功 `data`：加前／加后余额（字段名仍为 `original_balance`、`balance`）。
+这是**加钱**。锦标赛 `game_code` 为 `TOURNAMENT`。
 
 ## POST `{base}/player/bet_refund`
 
-平台确认该注应退回时调用。同一 `sn` 已退过请回 `OK`，不要再加一次钱。
+把该 `sn` 对应下注退回。已退过回 `OK`，余额不变。
+
+## 自测
+
+- [ ] 同一 sn 的 bet 连打两次只扣一次
+- [ ] 回 `"OK"` 而不是 `"200"`
+- [ ] 15 秒内一定响应
+- [ ] 玩家离线仍接受 win

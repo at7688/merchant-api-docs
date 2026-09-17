@@ -1,27 +1,80 @@
 ---
 title: Overview
-description: Transfer and seamless wallets. Success is code = OK.
+description: Follow this page to land your first API call.
 ---
 
-Every merchant request is **HTTPS POST**, **JSON**, **UTF-8**. Inner params are JSON, then **AES-256-GCM** with your 32-byte hex **ApiKey**. Put the hex ciphertext in outer `data`.
+This guide is for engineers integrating AT Gaming. Follow the steps below. If something fails, use **Common issues** first, then contact us with `trace_id`.
 
-| | URL |
+<Note>
+Success means JSON `code` is `OK`. Do not treat HTTP status as the only signal, and do not treat `"200"` as success.
+</Note>
+
+## What you receive
+
+| Item | Use |
 |---|---|
+| `agent_acc` | Merchant agent id on the **outer** body (not encrypted) |
+| ApiKey | 64 hex chars (32 bytes) to encrypt inner JSON |
 | Test | `https://api.at-dev.app/api/v1` |
 | Production | `https://api.at-gaming.app/api/v1` |
 
-Whitelist your server egress IPs.
+Send your **server egress IPs** to be whitelisted. Laptop IPs change; use a fixed test host.
 
-## Two wallet types
+## Which wallet
 
-**Transfer wallet**: player balance lives on the platform. You call `/player/*` and `/transfer/*`.
+<AccordionGroup>
+  <Accordion title="Transfer wallet (balance on AT)">
+    You create players, log them in, and move money with `/transfer/add`. Bets debit the platform balance.
+  </Accordion>
+  <Accordion title="Seamless wallet (balance on your side)">
+    You still create players and log them in. **We call your HTTPS URL** for `/player/balance`, `/player/bet`, `/player/win`, `/player/bet_refund`. You must **dedupe on `sn`**. See [Seamless](/en/seamless).
+  </Accordion>
+</AccordionGroup>
 
-**Seamless wallet**: player balance lives with you. You still call the same account/login/record APIs. **Bets and payouts are callbacks to your URL** (`/player/balance`, `/player/bet`, `/player/win`, `/player/bet_refund`). Set that base URL in the back office.
+Encryption and envelope: [Protocol](/en/protocol).
 
-## How to read results
+## Integration order
 
-- Success: `code` is **`OK`** (not `"200"`).
-- Auth/business errors: usually **HTTP 200** with a non-OK `code`.
-- **HTTP 500** = result unknown. Body **may not be JSON**. For transfers, call `/transfer/check`; do not treat 500 as a confirmed failure.
+<Steps>
+  <Step title="Whitelist and keys">
+    Confirm test IP, `agent_acc`, and ApiKey match the back office.
+  </Step>
+  <Step title="Encrypt a sample">
+    Match the [protocol](/en/protocol) test vector, then switch to a random nonce.
+  </Step>
+  <Step title="Create a player">
+    `POST /player/add`. Send `acc` **without** the agent prefix.
+  </Step>
+  <Step title="Transfer wallet: small credit">
+    `POST /transfer/add` with a positive `amount`. On HTTP 500, call `/transfer/check` — do not mint a new `sn` yet.
+  </Step>
+  <Step title="Login">
+    `POST /player/login` and open `data.url`.
+  </Step>
+  <Step title="Seamless: implement balance first">
+    Then bet/win, always unique on `sn`.
+  </Step>
+</Steps>
 
-See [Protocol](/en/protocol) and [Error codes](/en/errors).
+## How `acc` works
+
+You send `acc: "jordan"`. We store `{agent_acc}_jordan` (e.g. `kiwi01_jordan`).
+
+- You → us: send **`jordan` only**
+- Us → you (seamless): `player_acc` is `jordan`; `acc` on balance is the full `kiwi01_jordan`
+
+Sending `kiwi01_jordan` becomes `kiwi01_kiwi01_jordan` → `ACC_NOT_FOUND`.
+
+## Common issues
+
+| Symptom | Check |
+|---|---|
+| `AGENT_NOT_FOUND` | Outer `agent_acc` matches back office (lowercase) |
+| `IP_NOT_ALLOWED` | Real egress IP (NAT / cloud NAT) is whitelisted |
+| `DECRYPT_FAILED` | 64-hex key, blob is `nonce+ciphertext+tag`, UTF-8 JSON |
+| `PARAM_INVALID` | Types, lengths, Unix **seconds** (10 digits), not ms |
+| `ACC_NOT_FOUND` | Extra prefix? Player created? |
+| HTTP 500 | **Unknown result**. Transfer: `/transfer/check`. Do not reverse blindly |
+| Seamless payout fails | Your `code` must be the string `"OK"`, not `200` |
+
+When you contact us: environment, path, `agent_acc`, **`trace_id`**, UTC time. **Never** send the ApiKey.

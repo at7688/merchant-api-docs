@@ -1,27 +1,82 @@
 ---
 title: 概述
-description: 轉帳錢包與單錢包。成功看 code = OK。
+description: 先看這頁就能打通第一支 API。
 ---
 
-所有商戶請求都是 **HTTPS POST**、**JSON**、**UTF-8**。內層參數先 JSON，再用商戶 **ApiKey**（32-byte hex）做 **AES-256-GCM**，密文 hex 放在外層 `data`。
+這份文件給要串 AT Gaming 的工程師。照下面做，第一支請求就能打通。卡關時先對照本頁「常見問題」，再帶 `trace_id` 找對接窗口。
 
-| | 網址 |
+<Note>
+成功只看 JSON 裡的 `code` 是否為 `OK`。不要用 HTTP 狀態碼當唯一依據，也不要把 `"200"` 當成成功。
+</Note>
+
+## 你會拿到什麼
+
+對接窗口會給你：
+
+| 項目 | 用途 |
 |---|---|
-| 測試 | `https://api.at-dev.app/api/v1` |
-| 正式 | `https://api.at-gaming.app/api/v1` |
+| `agent_acc` | 商戶代理帳號，放在請求外層，**不加密** |
+| ApiKey | 64 個 hex 字元（32 bytes），用來加密內層參數 |
+| 測試網址 | `https://api.at-dev.app/api/v1` |
+| 正式網址 | `https://api.at-gaming.app/api/v1` |
 
-請把伺服器出口 IP 加進商戶白名單。
+請先把**呼叫 API 的伺服器出口 IP** 交給對接窗口加入白名單。本機筆電 IP 每次重連都會變，建議用測試機或固定出口。
 
-## 兩種錢包
+## 兩種錢包，先認清自己是哪一種
 
-**轉帳錢包**：玩家餘額在平台。商戶呼叫 `/player/*`、`/transfer/*` 建帳、登入、上下分。
+<AccordionGroup>
+  <Accordion title="轉帳錢包（餘額在平台）">
+    玩家點數存在 AT。你負責：建帳、登入、把錢轉進／轉出平台（`/transfer/add`）。下注由平台從平台餘額扣。
+  </Accordion>
+  <Accordion title="單錢包（餘額在你那邊）">
+    玩家點數存在你的系統。你一樣要建帳、登入、查紀錄。**下注扣款與派彩由平台打你的 HTTPS 網址**。你必須實作 `/player/balance`、`/player/bet`、`/player/win`、`/player/bet_refund`，並用 `sn` 做去重。細節見 [單錢包](/seamless)。
+  </Accordion>
+</AccordionGroup>
 
-**單錢包**：玩家餘額在商戶。商戶仍呼叫同一套建帳／登入／查紀錄；**下注與派彩由平台呼叫你的網址**（`/player/balance`、`/player/bet`、`/player/win`、`/player/bet_refund`）。你的 base URL 填在後台「商戶 API 網址」。
+兩種錢包共用同一套加密與信封，見 [傳輸協議](/protocol)。
 
-## 判斷結果
+## 建議串接順序
 
-- 成功：`code` 為 **`OK`**（不是 `"200"`）。
-- 業務／鑑權錯誤：多數為 **HTTP 200** + 非 OK 的 `code`。
-- **HTTP 500**＝結果不明。body **不一定是 JSON**。轉帳請再打 `/transfer/check`，不要把 500 當確定失敗。
+<Steps>
+  <Step title="白名單與金鑰">
+    確認測試環境已加 IP、你手上的 `agent_acc` 與 ApiKey 能對上後台。
+  </Step>
+  <Step title="加密一筆內層 JSON">
+    依 [傳輸協議](/protocol) 的測試向量，確認你算出的 hex 與文件一致，再換成隨機 nonce 做正式請求。
+  </Step>
+  <Step title="建一個測試玩家">
+    `POST /player/add`，內層只要 `acc`、`name`。`acc` **不要**加代理前綴。
+  </Step>
+  <Step title="轉帳錢包：轉一筆小額">
+    `POST /transfer/add`，`amount` 用正數入金。若回 HTTP 500，打 `/transfer/check`，不要立刻換新單號重送。
+  </Step>
+  <Step title="登入拿遊戲網址">
+    `POST /player/login`，把回傳的 `url` 在瀏覽器打開。
+  </Step>
+  <Step title="單錢包：先實作 balance">
+    平台會先查餘額。balance 通了再做 bet／win，且 bet／win 必須用 `sn` 去重。
+  </Step>
+</Steps>
 
-詳見 [傳輸協議](/protocol)、[錯誤碼](/errors)。
+## 帳號怎麼寫
+
+你送 `acc: "jordan"`。平台存的完整帳號是 `{agent_acc}_jordan`，例如 `kiwi01_jordan`。
+
+- 你呼叫我們：**只送** `jordan`
+- 我們呼叫你（單錢包）：`player_acc` 是 `jordan`，`acc` 有時是完整的 `kiwi01_jordan`（查餘額兩種都給）
+
+送成 `kiwi01_jordan` 會變成 `kiwi01_kiwi01_jordan`，接著 `ACC_NOT_FOUND`。
+
+## 常見問題（請先自查）
+
+| 現象 | 先檢查 |
+|---|---|
+| `AGENT_NOT_FOUND` | 外層 `agent_acc` 是否與後台完全一致（小寫） |
+| `IP_NOT_ALLOWED` | 實際出口 IP 是否已在白名單（NAT／雲端出口常不是你以為的那顆） |
+| `DECRYPT_FAILED` | ApiKey 是否 64 hex、密文是否 `nonce+密文+tag`、明文是否 UTF-8 JSON |
+| `PARAM_INVALID` | 內層欄位型別、長度、必填；時間是 **Unix 秒**（10 位數），不是毫秒 |
+| `ACC_NOT_FOUND` | 是否多加了代理前綴；玩家是否已 `/player/add` |
+| HTTP 500 | **結果不明**。轉帳用 `/transfer/check`。不要當成失敗就反向沖帳 |
+| 單錢包派彩失敗 | 你回的 `code` 必須是字串 `"OK"`，不是 `200` 或 `"200"` |
+
+報障請附：環境（測試／正式）、完整路徑、外層 `agent_acc`、**`trace_id`**、請求時間（UTC）。**不要**把 ApiKey 貼到信件或聊天。

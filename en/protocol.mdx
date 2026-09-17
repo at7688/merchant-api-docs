@@ -3,31 +3,92 @@ title: Protocol
 description: Encryption, envelope, HTTP vs code.
 ---
 
-## Outer request
+All merchant APIs:
+
+- `POST`
+- `Content-Type: application/json`
+- UTF-8
+- Path after the base, e.g. `https://api.at-dev.app/api/v1/player/add`
+
+## Outer body (not encrypted)
 
 ```json
 {
   "agent_acc": "kiwi01",
-  "data": "<hex of AES-GCM ciphertext>"
+  "data": "<hex of encrypted inner JSON>"
 }
 ```
 
-| Field | Required | Notes |
+| Field | Required | Rules |
 |---|---|---|
-| `agent_acc` | yes | Merchant agent account, alphanum, max 60 |
-| `data` | yes | Inner JSON after AES-256-GCM, then hex |
+| `agent_acc` | yes | alphanum, max 60 |
+| `data` | yes | hex only |
 
-### AES-256-GCM
+We use `agent_acc` to pick the ApiKey.
 
-1. Decode ApiKey as 32 bytes (64 hex chars).
-2. Random 12-byte nonce.
-3. Plaintext = UTF-8 JSON of inner params.
-4. Output = `nonce ‖ ciphertext ‖ tag`, then hex.
-5. Tag is 16 bytes.
+## Inner JSON (encrypt this)
 
-Seamless callbacks reverse this: we POST `{ "data": "<hex>" }` to you; decrypt with the same key.
+```json
+{"acc":"jordan","name":"Amy"}
+```
 
-## Envelope
+snake_case fields. Do not wrap in another `data`. UTF-8 bytes of this JSON are the plaintext.
+
+## AES-256-GCM
+
+| | |
+|---|---|
+| Algorithm | AES-256-GCM |
+| ApiKey | 64 hex chars → 32 bytes |
+| nonce | **12 bytes**, **new random value every request** |
+| tag | 16 bytes |
+| Wire format | `nonce ‖ ciphertext ‖ tag`, then hex |
+
+Never reuse a nonce in production. The vector below uses a fixed nonce **only** so you can verify your code. **Do not use this key live.**
+
+<Accordion title="Test vector">
+Plaintext (exact bytes):
+
+```text
+{"acc":"jordan","name":"Amy"}
+```
+
+| | hex |
+|---|---|
+| key | `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` |
+| nonce | `000102030405060708090a0b` |
+| expected `data` | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
+</Accordion>
+
+<CodeGroup>
+```javascript Node.js
+const crypto = require("crypto");
+
+function encrypt(plain, keyHex) {
+  const key = Buffer.from(keyHex, "hex");
+  const nonce = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, nonce);
+  const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([nonce, enc, tag]).toString("hex");
+}
+```
+
+```python Python
+import os, binascii
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+def encrypt(plain: str, key_hex: str) -> str:
+    key = binascii.unhexlify(key_hex)
+    nonce = os.urandom(12)
+    ct = AESGCM(key).encrypt(nonce, plain.encode("utf-8"), None)
+    return (nonce + ct).hex()
+```
+</CodeGroup>
+
+Parse JSON **before** looking at `code`. Do not `throw` on `!response.ok` and stop — HTTP 200 can still be a business error; HTTP 500 may not even be JSON.
+
+## Envelope we return
 
 ```json
 {
@@ -35,20 +96,23 @@ Seamless callbacks reverse this: we POST `{ "data": "<hex>" }` to you; decrypt w
   "message": "",
   "code": "OK",
   "data": {},
-  "trace_id": "uuid"
+  "trace_id": "3f2c1a0b-...."
 }
 ```
 
-`data` is an object or array, **not a string**. Include `trace_id` when you report issues.
-
-Branch on **`code`**, not HTTP status alone. Sample clients that throw on `!response.ok` without reading the body will miss HTTP 200 business errors and will mis-handle HTTP 500.
+`code` success value is only `OK`. `data` is an object or array, not a string. Always keep `trace_id` for support.
 
 ## HTTP status
 
-| HTTP | Meaning |
+| HTTP | What you do |
 |---|---|
-| 200 | Handled. Read `code` |
-| 404 | Unknown path |
-| 500 | Result unknown. Body may not be JSON. Check `/transfer/check` for transfers |
+| 200 and `code=OK` | Success |
+| 200 and `code≠OK` | Failed. See [errors](/en/errors) |
+| 404 | Wrong path |
+| 500 | **Unknown result**. Transfers: `/transfer/check`. Seamless: trust your ledger + `/bet_rec/query` |
 
-Auth/param errors (unknown agent, IP not allowed, decrypt fail, invalid params) are **HTTP 200** with the matching `code`.
+Unknown agent, IP not allowed, decrypt/param errors: **HTTP 200** with a `code`.
+
+## Seamless reverse direction
+
+We POST `{ "data": "<hex>" }` to you. Decrypt with the same key. You respond with **plain** JSON; success `code` must be `"OK"`.

@@ -3,33 +3,101 @@ title: 傳輸協議
 description: 加密、信封、HTTP 與 code。
 ---
 
-## 外層請求
+所有商戶 API 都是：
 
-每個端點（例如 `/player/add`）實際送出：
+- 方法：`POST`
+- `Content-Type: application/json`
+- 字元：UTF-8
+- 路徑接在 base 後面，例如 `https://api.at-dev.app/api/v1/player/add`
+
+## 外層（不加密）
 
 ```json
 {
   "agent_acc": "kiwi01",
-  "data": "<AES-GCM 密文的 hex>"
+  "data": "<內層加密後的 hex>"
 }
 ```
 
-| 欄位 | 必填 | 說明 |
+| 欄位 | 必填 | 規則 |
 |---|---|---|
-| `agent_acc` | 是 | 商戶代理帳號，英數，最長 60 |
-| `data` | 是 | 內層 JSON 經 AES-256-GCM 後再 hex |
+| `agent_acc` | 是 | 英數，最長 60，與後台代理帳號相同 |
+| `data` | 是 | 只含 0-9a-f 的 hex 字串 |
 
-### AES-256-GCM
+`agent_acc` 放外層是為了讓我們知道用哪一把 ApiKey 解密。
 
-1. ApiKey 解成 32 bytes（64 個 hex 字元）。
-2. 隨機 12-byte nonce。
-3. 明文 = 內層參數的 UTF-8 JSON。
-4. 輸出 = `nonce ‖ ciphertext ‖ tag`，再整段 hex。
-5. 標籤 16 bytes（128-bit）。
+## 內層（要加密）
 
-單錢包回呼方向相反：平台 POST `{ "data": "<hex>" }` 到你的網址，你用同一把 ApiKey 解密。
+先組成 JSON 物件，例如：
 
-## 標準信封
+```json
+{"acc":"jordan","name":"Amy"}
+```
+
+欄位名用 **snake_case**。不要包一層多餘的 `data`。這個 JSON 的 UTF-8 bytes 才是明文。
+
+## AES-256-GCM
+
+| 項目 | 值 |
+|---|---|
+| 演算法 | AES-256-GCM |
+| ApiKey | 64 個 hex 字元 → 32 bytes |
+| nonce | **12 bytes**，每次請求**必須重新隨機** |
+| tag | 16 bytes |
+| 輸出順序 | `nonce ‖ ciphertext ‖ tag`，再轉 hex |
+
+正式環境**禁止**重用 nonce。下面測試向量只用固定 nonce 讓你核對實作，**不要拿這把 key 當正式金鑰**。
+
+<Accordion title="測試向量（核對你的加密是否正確）">
+明文（一字不差）：
+
+```text
+{"acc":"jordan","name":"Amy"}
+```
+
+| | hex |
+|---|---|
+| key | `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` |
+| nonce | `000102030405060708090a0b` |
+| 應得到的 data | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
+
+對不上時，先確認 JSON 沒有空白、沒有換行、key 順序與上列相同。
+</Accordion>
+
+<CodeGroup>
+```javascript Node.js
+const crypto = require("crypto");
+
+function encrypt(plain, keyHex) {
+  const key = Buffer.from(keyHex, "hex");
+  const nonce = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, nonce);
+  const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag(); // 16 bytes
+  return Buffer.concat([nonce, enc, tag]).toString("hex");
+}
+```
+
+```python Python
+import os, binascii
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+def encrypt(plain: str, key_hex: str) -> str:
+    key = binascii.unhexlify(key_hex)
+    nonce = os.urandom(12)
+    ct = AESGCM(key).encrypt(nonce, plain.encode("utf-8"), None)  # 含 tag
+    return (nonce + ct).hex()
+```
+
+```go Go
+// nonce 12 bytes + gcm.Seal；輸出 hex(nonce || ciphertextAndTag)
+// 標準庫 cipher.NewGCM + aes.NewCipher，key 長度必須是 32
+```
+</CodeGroup>
+
+讀回應時：**先 `JSON.parse` body**，再看 `code`。不要寫 `if (!response.ok) throw` 就結束——HTTP 200 也可能是業務錯誤；HTTP 500 的 body 甚至不是 JSON。
+
+## 我們回你的信封
 
 ```json
 {
@@ -37,20 +105,33 @@ description: 加密、信封、HTTP 與 code。
   "message": "",
   "code": "OK",
   "data": {},
-  "trace_id": "uuid"
+  "trace_id": "3f2c1a0b-...."
 }
 ```
 
-`data` 是物件或陣列，**不是字串**。對帳或報障請帶 `trace_id`。
-
-請用 **`code`** 判斷，不要用 HTTP 狀態碼當唯一依據。範例若遇到 `!response.ok` 就丟例外、不讀 body，會把 HTTP 200 的業務錯誤漏掉，也會把 500 的不明結果當成傳輸失敗。
-
-## HTTP 狀態碼
-
-| HTTP | 意義 |
+| 欄位 | 說明 |
 |---|---|
-| 200 | 已處理。看 `code`：`OK` 成功，其餘為錯誤 |
-| 404 | 路徑不存在 |
-| 500 | 結果不明。body 不一定是 JSON。轉帳請 `/transfer/check` |
+| `code` | **唯一成功值是 `OK`**。其他都是錯誤 |
+| `data` | 物件或陣列，**不是字串** |
+| `trace_id` | 對帳、報障請帶這組。沒有它客服無法查 log |
 
-鑑權／參數類錯誤（找不到代理、IP 不在白名單、解密失敗、參數不合法等）現為 **HTTP 200 + 對應 `code`**。
+## HTTP 狀態碼怎麼用
+
+| HTTP | 你該做的事 |
+|---|---|
+| 200 且 `code=OK` | 成功，用 `data` |
+| 200 且 `code≠OK` | 業務或鑑權錯誤，依 [錯誤碼](/errors) 處理。**這筆請求沒有成功** |
+| 404 | 路徑寫錯，檢查 base + `/player/add` 這類路徑 |
+| 500 | **結果不明**（可能已入帳、也可能沒有）。body 不一定是 JSON。轉帳請 `/transfer/check`；單錢包請用 `sn` 對你自己的帳本，必要時再打 `/bet_rec/query` |
+
+找不到代理、IP 不在白名單、解密失敗、參數不合法：現在是 **HTTP 200 + 對應 `code`**。
+
+## 單錢包方向相反
+
+平台打你時，body 只有：
+
+```json
+{ "data": "<hex>" }
+```
+
+用同一把 ApiKey 解密。你回我們時請用明文 JSON（見 [單錢包](/seamless)），成功 `code` 必須是 `"OK"`。

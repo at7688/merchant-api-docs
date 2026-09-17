@@ -1,39 +1,52 @@
 ---
 title: 錯誤碼
-description: 成功只有 OK。
+description: 成功只有 OK。表內「你該做」請照著做。
 ---
 
-成功只有 **`OK`**。
+成功只有 **`OK`**。其餘都當失敗，但**處理方式不一樣**。
 
-## 請求沒被處理
+回傳都在信封的 `code`。`data` 多數錯誤為 `null`。
 
-| code | 說明 |
-|---|---|
-| `AGENT_NOT_FOUND` | 找不到代理帳號 |
-| `IP_NOT_ALLOWED` | 來源 IP 不在白名單 |
-| `API_KEY_INVALID` | ApiKey 未設或不合法 |
-| `DATA_FORMAT_INVALID` | `data` 不是合法 hex |
-| `DECRYPT_FAILED` | 解密失敗 |
-| `PARAM_INVALID` | 內層參數驗證失敗 |
-| `IP_BLOCKED` | IP 或國家被封鎖 |
+## 請求還沒進業務
 
-## 業務
+這組代表我們還沒幫你做事（或無法解密）。**改完再重試同一支**，不必換新的轉帳單號。
 
-| code | 說明 |
-|---|---|
-| `ACC_EXIST` | 帳號已存在 |
-| `ACC_NOT_FOUND` | 找不到玩家 |
-| `ACC_NOT_ACTIVE` | 帳號未啟用 |
-| `ACC_SUSPEND` | 帳號暫停 |
-| `NAME_EXIST` | 名稱已存在 |
-| `BALANCE_INSUFFICIENT` | 餘額不足 |
-| `TRANSFER_SN_EXIST` | 轉帳序號已存在（視為同一筆，請用 `/transfer/check`） |
-| `TRANSFER_NOT_FOUND` | 找不到轉帳 |
-| `GAME_NOT_FOUND` | 找不到遊戲 |
-| `GAME_MAINTAIN` | 遊戲或類別維護中 |
-| `BET_AMOUNT_RANGE` | 注額超出單注上下限 |
-| `FREE_ROUND_CAP` | 贈送旋轉超過商戶月額度 |
-| `TOO_MANY_REQUESTS` | 列表類每商戶每分鐘最多 10 次 |
-| `INTERNAL_SERVER_ERROR` | 系統故障（搭配 HTTP 500 時）。**結果不明** |
+| code | 原因 | 你該做 |
+|---|---|---|
+| `AGENT_NOT_FOUND` | 外層 `agent_acc` 對不上 | 對後台帳號，注意大小寫 |
+| `IP_NOT_ALLOWED` | 出口 IP 不在白名單 | 查實際出口，請對接窗口更新白名單 |
+| `API_KEY_INVALID` | 後台沒金鑰或不是 32 bytes | 請對接窗口核對 ApiKey |
+| `DATA_FORMAT_INVALID` | `data` 不是 hex | 確認加密輸出是 hex 字串 |
+| `DECRYPT_FAILED` | 金鑰、nonce、tag 或明文格式不對 | 用協議頁的測試向量核對 |
+| `PARAM_INVALID` | 內層驗證失敗 | 對該支 API 的必填、長度、Unix **秒** |
+| `IP_BLOCKED` | IP 或國家被封鎖 | 換網路或聯繫窗口，不要重試轟炸 |
+| `ACC_NOT_ACTIVE` | 商戶未啟用 | 聯繫窗口 |
+| `ACC_SUSPEND` | 商戶已暫停 | 聯繫窗口 |
 
-單錢包你回給平台時，成功也必須是 **`code: "OK"`**。不要回 `"200"`。
+## 業務已處理或可判斷
+
+| code | 原因 | 你該做 |
+|---|---|---|
+| `ACC_EXIST` | 玩家已存在 | 視為已建帳，走登入即可 |
+| `ACC_NOT_FOUND` | 找不到玩家 | 先 `/player/add`；確認沒加前綴 |
+| `ACC_NOT_ACTIVE` / `ACC_SUSPEND` | 玩家停用 | 不要讓玩家進遊戲 |
+| `NAME_EXIST` | 名稱重複 | 換 `name` |
+| `BALANCE_INSUFFICIENT` | 餘額不足 | 轉帳錢包：先入金。單錢包：你回這個 code 給我們即可 |
+| `TRANSFER_SN_EXIST` | 這個 `sn` 已經成功處理過 | **不要當失敗**。打 `/transfer/check` 取結果 |
+| `TRANSFER_NOT_FOUND` | 沒有這筆轉帳 | 若剛送出後遇到 HTTP 500，隔幾秒再 check；仍沒有再換新 `sn` |
+| `GAME_NOT_FOUND` | 遊戲代碼錯 | 先 `/game/list` |
+| `GAME_MAINTAIN` | 維護中 | 稍後再讓玩家進 |
+| `BET_AMOUNT_RANGE` | 注額超出該玩家該遊戲上下限 | 改 `bet_amount` |
+| `FREE_ROUND_CAP` | 當月贈送名目總額滿了 | 等下月或聯繫窗口調額度 |
+| `TOO_MANY_REQUESTS` | 列表接口每商戶每分鐘 10 次 | 降頻、做快取 |
+| `INTERNAL_SERVER_ERROR` | 系統故障 | 見下一節 |
+
+## HTTP 500／結果不明
+
+此時**不能**假設「一定失敗」或「一定成功」。
+
+1. 轉帳：用**同一個** `sn` 打 `/transfer/check`。有紀錄＝已入帳；沒有＝可換新 `sn` 再送。
+2. 單錢包：以你帳本上該 `sn` 為準；也可 `/bet_rec/query`。查到 `UNKNOWN` **不要自行退款**，改聯絡窗口。
+3. 報障附 `trace_id`、時間、路徑。不要附 ApiKey。
+
+單錢包你回給平台時，成功也必須是字串 **`"OK"`**。回 `"200"`、`200`、`"success"` 都會被當成失敗，玩家會少錢或派彩不到帳。

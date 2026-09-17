@@ -3,44 +3,62 @@ title: 贈送旋轉
 description: 發放、取消、查詢。
 ---
 
-贈送旋轉**不扣玩家餘額**、不累積 JP。單錢包結算派彩仍可能打你的 `/player/win`（只有贏分、沒有對應 bet 扣款）。`bet_amount` 是名目注額，必須 **> 0**。
+讓指定玩家在指定遊戲免費轉 N 次。這些轉**不扣玩家餘額**、不累積 JP。
 
-同一 `sn` 重送視為同一筆（冪等），成功 `data.existed` 為 true。
+單錢包：玩家用贈送旋轉贏分時，我們仍可能打你的 `/player/win`（只有派彩，沒有對應的 bet 扣款）。請照 `sn` 加錢，不要因為沒看到 bet 就拒絕。
+
+`bet_amount` 是名目注額，必須 **> 0**，且落在該玩家該遊戲的單注上下限，否則 `BET_AMOUNT_RANGE`。
 
 ## POST `/free_round/add`
 
-| 欄位 | 必填 | 說明 |
+`sn` 是你的活動單號，**重送同一 sn 不會再送一次**（冪等）。第二次成功時 `existed` 為 `true`。
+
+```json
+{
+  "sn": "FR-20260917-001",
+  "acc": "jordan",
+  "game_code": "MLCQ",
+  "bet_amount": 10,
+  "count": 5,
+  "expire_at": 1759300000
+}
+```
+
+| 欄位 | 必填 | 規則 |
 |---|---|---|
-| `sn` | 是 | 活動單號，最長 80 |
-| `acc` | 是 | 玩家帳號（不要前綴） |
-| `game_code` | 是 | |
-| `bet_amount` | 是 | > 0，須在該玩家該遊戲單注上下限內 |
+| `sn` | 是 | 最長 80 |
+| `acc` | 是 | 不要前綴 |
+| `game_code` | 是 | 須為有效遊戲 |
+| `bet_amount` | 是 | > 0 |
 | `count` | 是 | 1–100 |
-| `expire_at` | 是 | Unix 秒，0 表示用系統預設有效期 |
+| `expire_at` | 是 | Unix 秒；`0` 表示用系統預設有效期 |
 
-成功：`{ "sn": "...", "existed": false }`。
+成功：`{ "sn": "FR-20260917-001", "existed": false }`。
 
-| code | 說明 |
+| code | 處理 |
 |---|---|
-| `FREE_ROUND_CAP` | 超過該商戶當月名目總額（轉數×注額） |
-| `BET_AMOUNT_RANGE` | 注額超出上下限 |
-| `ACC_NOT_FOUND` | 找不到玩家 |
+| `FREE_ROUND_CAP` | 當月名目總額（次數 × 注額）超過商戶上限。不要重試同一批 |
+| `BET_AMOUNT_RANGE` | 改注額 |
+| `ACC_NOT_FOUND` | 先建帳 |
+| `GAME_NOT_FOUND` | 核對 game_code |
+
+遊戲端畫面（剩幾轉、鎖定注額）需遊戲配合，見對接窗口。平台會在玩家旋轉時自動消耗次數。
 
 ## POST `/free_round/cancel`
 
-| 欄位 | 必填 |
-|---|---|
-| `sn` | 是 |
+```json
+{ "sn": "FR-20260917-001" }
+```
 
-取消後剩餘次數歸零。找不到：`ACC_NOT_FOUND`。
+剩餘次數歸零。找不到該活動：`ACC_NOT_FOUND`。已用掉的轉不會從歷史注單刪除。
 
 ## POST `/free_round/list`
 
-| 欄位 | 必填 | 說明 |
+| 欄位 | 必填 | 規則 |
 |---|---|---|
 | `page` | 是 | ≥ 1 |
 | `perpage` | 是 | 1–100 |
 | `acc` | 否 | |
 | `start_at` / `end_at` | 否 | Unix 秒 |
 
-成功 `list` 欄位：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
+`list` 每筆：`sn`、`game_code`、`bet_amount`、`total`（發放次數）、`remain`（剩餘）、`expire_at`、`created_at`。

@@ -3,43 +3,78 @@ title: 轉帳
 description: 上下分。sn 必須唯一。
 ---
 
-僅**轉帳錢包**。`sn`：英數加 `_` `-`，長度 6–120，必須唯一。`amount` 不可為 0；**正數入金、負數出金**。
+僅**轉帳錢包**。單錢包不要打這些接口。
+
+把 `sn` 當成銀行匯款編號：同一筆業務只能用一次。我們用它保證**重送不會轉兩次**。
+
+| 欄位通則 | 規則 |
+|---|---|
+| `sn` | 英數與 `_` `-`，6–120。建議 `{商戶單號}`，不要用純時間戳以免碰撞 |
+| `acc` | 玩家帳號，不要前綴 |
+| `amount` | **不能是 0**。正數＝玩家入金到平台；負數＝從平台出金到你那邊 |
+| 時間 | Unix **秒** |
 
 ## POST `/transfer/add`
 
-| 欄位 | 必填 |
-|---|---|
-| `sn` | 是 |
-| `acc` | 是 |
-| `amount` | 是，≠ 0 |
+```json
+{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
+```
 
-成功 `data`：`currency`、`balance`（轉帳後餘額）。
+出金 50：
 
-| code | 處理 |
-|---|---|
-| `TRANSFER_SN_EXIST` | 同一 `sn` 已處理過，打 `/transfer/check` |
-| `BALANCE_INSUFFICIENT` | 出金餘額不足 |
-| `ACC_NOT_FOUND` | 找不到玩家 |
+```json
+{ "sn": "T20260917-0002", "acc": "jordan", "amount": -50 }
+```
 
-**HTTP 500**：結果不明。先 `/transfer/check` 再決定要不要換新 `sn` 重送。
+成功：
+
+```json
+{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
+```
+
+`balance` 是**這筆完成後**的平台餘額。
+
+### 務必這樣處理結果
+
+<Steps>
+  <Step title="code = OK">
+    入帳完成，記在你的帳本，**同一 sn 不要再送**。
+  </Step>
+  <Step title="TRANSFER_SN_EXIST">
+    這個 sn 以前就成功過。打 `/transfer/check` 取餘額，**不要當失敗、不要換 sn 再轉一次**。
+  </Step>
+  <Step title="BALANCE_INSUFFICIENT">
+    出金時平台餘額不夠。這筆沒轉成功，可換新 sn 或等玩家有餘額。
+  </Step>
+  <Step title="HTTP 500 或連線中斷">
+    **結果不明**。用**同一個 sn** 打 `/transfer/check`：
+    - 查得到 → 已入帳
+    - `TRANSFER_NOT_FOUND` → 尚未入帳，才可以換新 sn 重送
+  </Step>
+</Steps>
+
+<Warning>
+不要在 500 之後立刻用新的 sn 再轉一次，玩家會被轉兩次。
+</Warning>
 
 ## POST `/transfer/check`
 
-| 欄位 | 必填 |
-|---|---|
-| `sn` | 是 |
-| `acc` | 是 |
+```json
+{ "sn": "T20260917-0001", "acc": "jordan" }
+```
 
-找不到：`TRANSFER_NOT_FOUND`。成功 `data` 含 `sn`、`amount`、`balance`、`created_at` 與玩家資料。
+找不到：`TRANSFER_NOT_FOUND`。成功會帶回 `sn`、`amount`、`balance`、`created_at`。
 
 ## POST `/transfer/list`
 
-| 欄位 | 必填 | 說明 |
+每商戶每分鐘最多 10 次。
+
+| 欄位 | 必填 | 規則 |
 |---|---|---|
 | `page` | 是 | ≥ 1 |
 | `perpage` | 是 | 1–100 |
 | `start_at` | 是 | Unix 秒 |
-| `end_at` | 是 | 須大於 `start_at` |
-| `acc` | 否 | 篩選玩家 |
+| `end_at` | 是 | 必須 **大於** `start_at` |
+| `acc` | 否 | 篩選單一玩家 |
 
 成功 `data`：`list`、`row_count`、`page_count`。

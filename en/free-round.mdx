@@ -3,35 +3,42 @@ title: Granted spins
 description: Grant, cancel, list.
 ---
 
-Granted spins **do not debit** the player and do not accrue JP. Seamless `/player/win` may still fire for wins (payout only, no matching bet debit). `bet_amount` is the nominal stake and must be **> 0**.
+Free rounds on a game: **no player debit**, no JP. Seamless `/player/win` may still fire for wins (payout only). Credit on that `sn`; do not reject because there was no bet.
 
-Reusing `sn` is idempotent; `data.existed` is true on a repeat.
+`bet_amount` is nominal and must be **> 0** and inside that player’s min/max (`BET_AMOUNT_RANGE`).
 
 ## POST `/free_round/add`
 
-| Field | Required | Notes |
+`sn` is idempotent. Repeats return `existed: true`.
+
+```json
+{
+  "sn": "FR-20260917-001",
+  "acc": "jordan",
+  "game_code": "MLCQ",
+  "bet_amount": 10,
+  "count": 5,
+  "expire_at": 1759300000
+}
+```
+
+| Field | Required | Rules |
 |---|---|---|
-| `sn` | yes | Campaign id, max 80 |
-| `acc` | yes | Player account without prefix |
+| `sn` | yes | max 80 |
+| `acc` | yes | no prefix |
 | `game_code` | yes | |
-| `bet_amount` | yes | > 0, within that player's min/max for the game |
+| `bet_amount` | yes | > 0 |
 | `count` | yes | 1–100 |
-| `expire_at` | yes | Unix seconds; 0 uses the system default |
+| `expire_at` | yes | Unix seconds; `0` = default TTL |
 
-Success: `{ "sn": "...", "existed": false }`.
+`FREE_ROUND_CAP`: monthly nominal cap (count × stake). Do not retry the same batch.
 
-| code | Meaning |
-|---|---|
-| `FREE_ROUND_CAP` | Monthly nominal cap (count × stake) exceeded |
-| `BET_AMOUNT_RANGE` | Stake outside min/max |
-| `ACC_NOT_FOUND` | Player not found |
+The platform consumes remaining rounds automatically. Game UI (remaining count, locked stake) needs the game client.
 
 ## POST `/free_round/cancel`
 
-`sn` required. Remaining rounds go to zero.
+`{ "sn": "FR-20260917-001" }`. Remaining goes to 0. Spins already used stay in history.
 
 ## POST `/free_round/list`
 
-`page` ≥ 1, `perpage` 1–100. Optional `acc`, `start_at`, `end_at`.
-
-List fields: `sn`, `game_code`, `bet_amount`, `total`, `remain`, `expire_at`, `created_at`.
+`page` ≥ 1, `perpage` 1–100. Fields: `sn`, `game_code`, `bet_amount`, `total`, `remain`, `expire_at`, `created_at`.

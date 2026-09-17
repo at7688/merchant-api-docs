@@ -3,27 +3,33 @@ title: 赠送旋转
 description: 发放、取消、查询。
 ---
 
-赠送旋转**不扣玩家余额**、不累积 JP。单钱包结算派彩仍可能打你的 `/player/win`。`bet_amount` 是名目注额，必须 **> 0**。
+指定玩家在指定游戏免费转 N 次。**不扣玩家余额**、不累积 JP。单钱包赢分时我们仍可能打你的 `/player/win`（只有派彩）。
 
-同一 `sn` 重送视为同一笔，成功 `data.existed` 为 true。
+`bet_amount` 必须 **> 0**，且在该玩家该游戏单注上下限内。
 
 ## POST `/free_round/add`
 
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `sn` | 是 | 活动单号，最长 80 |
-| `acc` | 是 | 玩家账号（不要前缀） |
-| `game_code` | 是 | |
-| `bet_amount` | 是 | > 0，须在该玩家该游戏单注上下限内 |
-| `count` | 是 | 1–100 |
-| `expire_at` | 是 | Unix 秒，0 表示用系统默认 |
+同一 `sn` 重送不会再送一次（`existed: true`）。
 
-成功：`{ "sn": "...", "existed": false }`。超额：`FREE_ROUND_CAP`。
+```json
+{
+  "sn": "FR-20260917-001",
+  "acc": "jordan",
+  "game_code": "MLCQ",
+  "bet_amount": 10,
+  "count": 5,
+  "expire_at": 1759300000
+}
+```
+
+`count` 1–100。`expire_at` 为 Unix 秒，`0`＝系统默认有效期。超额回 `FREE_ROUND_CAP`，不要重试同一批。
+
+平台会在玩家旋转时自动消耗次数。
 
 ## POST `/free_round/cancel`
 
-`sn` 必填。剩余次数归零。
+`{ "sn": "FR-20260917-001" }`。剩余次数归零。已用掉的转不会从历史删除。
 
 ## POST `/free_round/list`
 
-`page` ≥ 1，`perpage` 1–100。列表字段：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
+`page` ≥ 1，`perpage` 1–100。字段：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。

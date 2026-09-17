@@ -3,26 +3,33 @@ title: 转账
 description: 上下分。sn 必须唯一。
 ---
 
-仅**转账钱包**。`sn`：英数加 `_` `-`，长度 6–120，必须唯一。`amount` 不可为 0；**正数入金、负数出金**。
+仅**转账钱包**。把 `sn` 当成银行汇款编号：同一笔业务只能用一次。
+
+`amount` 不能为 0。正数＝玩家入金到平台；负数＝从平台出金。时间是 Unix **秒**。
 
 ## POST `/transfer/add`
 
-| 字段 | 必填 |
-|---|---|
-| `sn` | 是 |
-| `acc` | 是 |
-| `amount` | 是，≠ 0 |
+入金 100：`{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }`
 
-成功 `data`：`currency`、`balance`。
+出金 50：`"amount": -50`。
 
-`TRANSFER_SN_EXIST`：同一 `sn` 已处理，打 `/transfer/check`。`BALANCE_INSUFFICIENT`：出金余额不足。
+成功 `data.balance` 是**这笔完成后**的平台余额。
 
-**HTTP 500**：结果不明。先 `/transfer/check` 再决定要不要换新 `sn`。
+<Steps>
+  <Step title="code = OK">入帐完成，同一 sn 不要再送。</Step>
+  <Step title="TRANSFER_SN_EXIST">以前就成功过。打 `/transfer/check`，不要换 sn 再转。</Step>
+  <Step title="BALANCE_INSUFFICIENT">出金失败。</Step>
+  <Step title="HTTP 500 或断线">**结果不明**。用**同一个 sn** `/transfer/check`。查得到＝已入帐；`TRANSFER_NOT_FOUND` 才可以换新 sn。</Step>
+</Steps>
+
+<Warning>
+不要在 500 之后立刻用新的 sn 再转一次。
+</Warning>
 
 ## POST `/transfer/check`
 
-`sn`、`acc` 必填。找不到：`TRANSFER_NOT_FOUND`。
+`sn`、`acc` 必填。
 
 ## POST `/transfer/list`
 
-`page` ≥ 1，`perpage` 1–100，`start_at`／`end_at` 必填（Unix 秒，`end_at` 须大于 `start_at`），`acc` 可选。
+每商户每分钟最多 10 次。`page` ≥ 1，`perpage` 1–100，`end_at` 必须大于 `start_at`。

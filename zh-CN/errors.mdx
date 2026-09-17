@@ -3,37 +3,41 @@ title: 错误码
 description: 成功只有 OK。
 ---
 
-成功只有 **`OK`**。
+成功只有 **`OK`**。其余都当失败，但处理方式不一样。
 
-## 请求没被处理
+## 请求还没进业务
 
-| code | 说明 |
-|---|---|
-| `AGENT_NOT_FOUND` | 找不到代理账号 |
-| `IP_NOT_ALLOWED` | 来源 IP 不在白名单 |
-| `API_KEY_INVALID` | ApiKey 未设或不合法 |
-| `DATA_FORMAT_INVALID` | `data` 不是合法 hex |
-| `DECRYPT_FAILED` | 解密失败 |
-| `PARAM_INVALID` | 内层参数验证失败 |
-| `IP_BLOCKED` | IP 或国家被封锁 |
+改完再重试同一支，不必换新的转账单号。
+
+| code | 原因 | 你该做 |
+|---|---|---|
+| `AGENT_NOT_FOUND` | 外层 `agent_acc` 对不上 | 对后台账号 |
+| `IP_NOT_ALLOWED` | 出口 IP 不在白名单 | 查实际出口 |
+| `API_KEY_INVALID` | 密钥未设或不是 32 bytes | 请窗口核对 |
+| `DATA_FORMAT_INVALID` | `data` 不是 hex | 确认加密输出 |
+| `DECRYPT_FAILED` | 密钥／nonce／tag／JSON | 用测试向量核对 |
+| `PARAM_INVALID` | 内层验证失败 | 必填、长度、Unix **秒** |
+| `IP_BLOCKED` | IP 或国家被封锁 | 联系窗口 |
+| `ACC_NOT_ACTIVE` / `ACC_SUSPEND` | 商户停用 | 联系窗口 |
 
 ## 业务
 
-| code | 说明 |
+| code | 你该做 |
 |---|---|
-| `ACC_EXIST` | 账号已存在 |
-| `ACC_NOT_FOUND` | 找不到玩家 |
-| `ACC_NOT_ACTIVE` | 账号未启用 |
-| `ACC_SUSPEND` | 账号暂停 |
-| `NAME_EXIST` | 名称已存在 |
-| `BALANCE_INSUFFICIENT` | 余额不足 |
-| `TRANSFER_SN_EXIST` | 转账序号已存在，请用 `/transfer/check` |
-| `TRANSFER_NOT_FOUND` | 找不到转账 |
-| `GAME_NOT_FOUND` | 找不到游戏 |
-| `GAME_MAINTAIN` | 游戏或类别维护中 |
-| `BET_AMOUNT_RANGE` | 注额超出单注上下限 |
-| `FREE_ROUND_CAP` | 赠送旋转超过商户月额度 |
-| `TOO_MANY_REQUESTS` | 列表类每商户每分钟最多 10 次 |
-| `INTERNAL_SERVER_ERROR` | 系统故障（搭配 HTTP 500）。**结果不明** |
+| `ACC_EXIST` | 视为已建帐，去登录 |
+| `ACC_NOT_FOUND` | 先 add；确认没加前缀 |
+| `BALANCE_INSUFFICIENT` | 转账钱包先入金；单钱包你回这个 code |
+| `TRANSFER_SN_EXIST` | **不当失败**。打 `/transfer/check` |
+| `TRANSFER_NOT_FOUND` | 500 之后隔几秒再 check；仍没有再换 sn |
+| `GAME_NOT_FOUND` | `/game/list` |
+| `GAME_MAINTAIN` | 稍后重试 |
+| `BET_AMOUNT_RANGE` | 改注额 |
+| `FREE_ROUND_CAP` | 不要重试同一批 |
+| `TOO_MANY_REQUESTS` | 列表每商户每分钟 10 次 |
+| `INTERNAL_SERVER_ERROR` | 见下一节 |
 
-单钱包你回给平台时，成功也必须是 **`code: "OK"`**。不要回 `"200"`。
+## HTTP 500／结果不明
+
+不能假设一定失败或一定成功。转账用**同一个** `sn` 打 `/transfer/check`。单钱包以你帐本该 `sn` 为准；`/bet_rec/query` 若是 `UNKNOWN` **不要自行退款**。报障附 `trace_id`，不要附 ApiKey。
+
+你回给平台时成功必须是字符串 **`"OK"`**。
