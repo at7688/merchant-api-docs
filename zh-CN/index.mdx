@@ -1,6 +1,6 @@
 ---
-title: AT Gaming 商户 API
-description: 转账钱包与单钱包对接。成功一律看 code = OK，不要只看 HTTP 状态码。
+title: 简介
+description: 转账钱包与单钱包。成功看 code = OK。
 ---
 
 所有商户请求都是 **HTTPS POST**、**JSON**、**UTF-8**。内层参数先 JSON，再用商户 **ApiKey**（32-byte hex）做 **AES-256-GCM**，密文 hex 放在外层 `data`。
