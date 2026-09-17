@@ -12,7 +12,7 @@ description: 平台對商戶之回調。Timeout 15 秒。
 解密金鑰與商戶 API 之 ApiKey 相同。排列見 [傳輸協議](/protocol)。
 
 <Warning>
-成功條件：HTTP 200，且 JSON `code` 為字串 `"OK"`。`"200"`、數值 `200` 或其他字串均視為失敗。
+成功時 `code` 為 `OK`。
 </Warning>
 
 逾時 **15 秒**。不立即重送同一封包；扣款結果未決時可能續發 `/player/refund`。玩家離線後仍可能收到 `/player/win`。
@@ -68,7 +68,7 @@ description: 平台對商戶之回調。Timeout 15 秒。
 }
 ```
 
-餘額不足：HTTP 200，`code` 非 `OK`。
+餘額不足：`code` 為 `BALANCE_INSUFFICIENT`。
 </Card>
 
 ## POST `{base}/player/win`

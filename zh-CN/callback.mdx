@@ -6,7 +6,7 @@ description: 平台对商户的回调。超时 15 秒。
 适用于单一钱包。平台对商户 base URL 发出 `POST` `{ "data": "<hex>" }`。密钥与商户 ApiKey 相同。见 [传输协议](/zh-CN/protocol)。
 
 <Warning>
-成功条件：HTTP 200，且 `code` 为字符串 `"OK"`。
+成功时 `code` 为 `OK`。
 </Warning>
 
 超时 15 秒。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。

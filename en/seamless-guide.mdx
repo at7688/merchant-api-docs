@@ -12,7 +12,7 @@ Shared spec: [Protocol](/en/protocol), [Error codes](/en/errors). Callback spec:
 1. Obtain `agent_acc` and ApiKey; whitelist source IPs. Register the callback base URL.
 2. Implement encrypt (merchant → platform) and decrypt (callbacks). Same key.
 3. `POST /player/add`, `POST /player/login`. `acc` excludes the agent prefix.
-4. Implement `/player/balance`, `/player/bet`, `/player/win`, `/player/refund`. Success is the string `"OK"`. Timeout 15 seconds.
+4. Implement `/player/balance`, `/player/bet`, `/player/win`, `/player/refund`. Success: `code` is `OK`. Timeout 15 seconds.
 5. Enforce idempotency on `sn`. Accept `/player/win` after disconnect.
 6. Reconciliation: `/bet_rec/query`. `UNKNOWN` must not trigger an automatic refund.
 

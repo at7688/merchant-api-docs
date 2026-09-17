@@ -6,7 +6,7 @@ description: Platform callbacks. Timeout 15 seconds.
 Seamless wallet only. Platform `POST` `{ "data": "<hex>" }`. Same ApiKey. [Protocol](/en/protocol).
 
 <Warning>
-Success: HTTP 200 and `code` `"OK"`. `"200"` and numeric `200` are failures.
+Success: `code` is `OK`.
 </Warning>
 
 Timeout 15 seconds. Idempotency on `sn`. `/player/win` may arrive after disconnect.

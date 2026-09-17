@@ -103,16 +103,6 @@ All successful merchant APIs use this envelope. Per-endpoint `data` fields are o
 | `data` | object \| array \| null | Payload on success; usually `null` on error |
 | `trace_id` | string | Request id for logs and incidents |
 
-Parse JSON, then read `code`. Do not abort solely on HTTP status without reading the body.
+Outcome is `code`.
 
-## HTTP status
-
-| Status | Meaning |
-|---|---|
-| 200 | Processed. Outcome is `code` |
-| 404 | Unknown path |
-| 500 | Outcome undetermined. Body may not be JSON |
-
-Unknown agent, unlisted IP, decrypt failure, and invalid parameters return **HTTP 200** with an error `code`.
-
-HTTP 500: transfers use the same `sn` on `/transfer/check`. Seamless wallets reconcile against the merchant ledger and `/bet_rec/query`. Reversals must not be assumed.
+Unknown path: HTTP 404. HTTP 500 means the outcome is undetermined; the body may not be JSON. Transfers: `/transfer/check` with the same `sn`. Seamless: merchant ledger and `/bet_rec/query`. Reversals must not be assumed.

@@ -103,16 +103,6 @@ def encrypt(plain: str, key_hex: str) -> str:
 | `data` | object \| array \| null | 成功時之資料本體。錯誤時多為 `null` |
 | `trace_id` | string | 本次請求識別，對帳與缺陷報告使用 |
 
-用戶端須先解析 JSON，再讀取 `code`。不得在未讀取 body 的情況下僅依 HTTP 狀態中止處理。
+成功與否以 `code` 為準。
 
-## HTTP 狀態
-
-| 狀態 | 語意 |
-|---|---|
-| 200 | 請求已處理。成功與否以 `code` 為準 |
-| 404 | 路徑不存在 |
-| 500 | 結果未決。body 未必為 JSON |
-
-代理不存在、來源 IP 未授權、解密失敗、參數不合法等，回應 **HTTP 200** 且 `code` 為對應錯誤值。
-
-HTTP 500 表示結果未決：轉帳須以同一 `sn` 呼叫 `/transfer/check`；單錢包須以商戶帳本及 `/bet_rec/query` 核對，不得逕行沖正。
+路徑不存在為 HTTP 404。HTTP 500 表示結果未決，body 未必為 JSON：轉帳須以同一 `sn` 呼叫 `/transfer/check`；單錢包須以商戶帳本及 `/bet_rec/query` 核對，不得逕行沖正。

@@ -49,4 +49,4 @@ HTTP 500 或連線中斷時，不得假設成功或失敗。
 | `/transfer/add` | 以原 `sn` 呼叫 `/transfer/check`。查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn` |
 | 單錢包 | 以商戶帳本中該 `sn` 為準。`/bet_rec/query` 回傳 `UNKNOWN` 時不得自動退款 |
 
-單錢包回調之成功值必須為字串 `"OK"`。
+單錢包回調成功時 `code` 為 `OK`。

@@ -98,16 +98,6 @@ def encrypt(plain: str, key_hex: str) -> str:
 | `data` | object \| array \| null | 成功时的数据本体。错误时多为 `null` |
 | `trace_id` | string | 本次请求标识 |
 
-客户端须先解析 JSON，再读取 `code`。
+成功与否以 `code` 为准。
 
-## HTTP 状态
-
-| 状态 | 语义 |
-|---|---|
-| 200 | 请求已处理。成功与否以 `code` 为准 |
-| 404 | 路径不存在 |
-| 500 | 结果未决。body 未必为 JSON |
-
-代理不存在、来源 IP 未授权、解密失败、参数不合法等，响应 **HTTP 200** 且 `code` 为对应错误值。
-
-HTTP 500：转账须以同一 `sn` 调用 `/transfer/check`；单一钱包须以商户账本及 `/bet_rec/query` 核对，不得径行冲正。
+路径不存在为 HTTP 404。HTTP 500 表示结果未决，body 未必为 JSON：转账须以同一 `sn` 调用 `/transfer/check`；单一钱包须以商户账本及 `/bet_rec/query` 核对，不得径行冲正。
