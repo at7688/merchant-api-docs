@@ -39,12 +39,12 @@ UTF-8 JSON 物件，欄位為 snake_case。該位元組序列為 GCM 明文。�
 | 參數 | 值 |
 |---|---|
 | 演算法 | AES-256-GCM |
-| 金鑰 | ApiKey 十六進位解碼，長度 32 bytes |
+| 金鑰 | ApiKey 十六進位解碼，長度 32 位元組 |
 | nonce | 12 bytes，每個請求獨立隨機，禁止重用 |
 | tag | 16 bytes |
 | 密文排列 | `nonce ‖ ciphertext ‖ tag`，再編碼為 hex |
 
-單錢包回呼使用同一金鑰與同一排列；平台請求僅含 `{ "data": "<hex>" }`。
+單錢包回調使用同一金鑰與同一排列；平台請求僅含 `{ "data": "<hex>" }`。
 
 ### 參考向量
 

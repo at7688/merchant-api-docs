@@ -11,7 +11,7 @@ description: 成功值僅為 OK。
 |---|---|---|
 | `AGENT_NOT_FOUND` | 外層 `agent_acc` 無法對應代理 | 核對帳號 |
 | `IP_NOT_ALLOWED` | 來源 IP 不在白名單 | 更新白名單 |
-| `API_KEY_INVALID` | ApiKey 未設定或長度非 32 bytes | 核對金鑰 |
+| `API_KEY_INVALID` | ApiKey 未設定或長度非 32 位元組 | 核對金鑰 |
 | `DATA_FORMAT_INVALID` | `data` 非合法 hex | 核對編碼 |
 | `DECRYPT_FAILED` | 解密失敗 | 核對金鑰、nonce 排列與明文 JSON |
 | `PARAM_INVALID` | 內層未通過驗證 | 核對必填、型別、長度；時間為 Unix 秒 |
@@ -49,4 +49,4 @@ HTTP 500 或連線中斷時，不得假設成功或失敗。
 | `/transfer/add` | 以原 `sn` 呼叫 `/transfer/check`。查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn` |
 | 單錢包 | 以商戶帳本中該 `sn` 為準。`/bet_rec/query` 回傳 `UNKNOWN` 時不得自動退款 |
 
-單錢包回呼之成功值必須為字串 `"OK"`。
+單錢包回調之成功值必須為字串 `"OK"`。

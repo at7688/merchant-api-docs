@@ -1,6 +1,6 @@
 ---
 title: 转账
-description: 转账钱包入金与出金。
+description: 转账钱包上分与下分。
 ---
 
 适用于转账钱包。`sn` 为幂等键：同一业务事件对应唯一 `sn`。
@@ -9,7 +9,7 @@ description: 转账钱包入金与出金。
 |---|---|
 | `sn` | 英数与 `_` `-`，长度 6–120 |
 | `acc` | 玩家账号，不含前缀 |
-| `amount` | 不得为 0。正数为入金（商户 → 平台），负数为出金（平台 → 商户） |
+| `amount` | 不得为 0。正数为上分（商户 → 平台），负数为下分（平台 → 商户） |
 | 时间 | Unix 秒 |
 
 ## POST `/transfer/add`
@@ -18,7 +18,7 @@ description: 转账钱包入金与出金。
 { "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
 ```
 
-出金例：`"amount": -50`。
+下分例：`"amount": -50`。
 
 ```json
 { "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
@@ -30,7 +30,7 @@ description: 转账钱包入金与出金。
 |---|---|---|
 | `OK` | 入账完成 | 不得重用该 `sn` |
 | `TRANSFER_SN_EXIST` | 该 `sn` 已成功入账 | 调用 `/transfer/check`。非失败 |
-| `BALANCE_INSUFFICIENT` | 出金余额不足 | 未入账 |
+| `BALANCE_INSUFFICIENT` | 下分余额不足 | 未入账 |
 | `ACC_NOT_FOUND` | 玩家不存在 | 未入账 |
 
 HTTP 500 或连接中断表示结果未决。须以**原 `sn`** 调用 `/transfer/check`：查得记录即已入账；`TRANSFER_NOT_FOUND` 后方可使用新 `sn`。于 500 后立即更换 `sn` 重送可导致重复入账。

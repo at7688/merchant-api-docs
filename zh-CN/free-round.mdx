@@ -1,13 +1,13 @@
 ---
-title: 赠送旋转
+title: 免费旋转
 description: 发放、取消、查询。
 ---
 
-向指定玩家发放指定游戏之免费旋转。该等旋转不扣除玩家余额、不计入 JP。
+向指定玩家发放指定游戏的免费旋转。该等旋转不扣除玩家余额、不计入 JP。
 
-单钱包结算时，平台仍可能对商户发出 `/player/win`（仅派彩、无对应 bet）。商户须依 `sn` 加款。
+单一钱包结算时，平台仍可能向商户发出 win 回调（仅派奖、无对应 bet）。商户须依 `sn` 加款。
 
-`bet_amount` 为名目注额，须大于 0，且位于该玩家该游戏单注上下限内，否则 `BET_AMOUNT_RANGE`。
+`bet_amount` 为名义注额，须大于 0，且位于该玩家该游戏单注上下限内，否则 `BET_AMOUNT_RANGE`。
 
 ## POST `/free_round/add`
 
@@ -39,7 +39,7 @@ description: 发放、取消、查询。
 
 | code | 定义 |
 |---|---|
-| `FREE_ROUND_CAP` | 当月名目总额（次数 × 注额）超过上限 |
+| `FREE_ROUND_CAP` | 当月名义总额（次数 × 注额）超过上限 |
 | `BET_AMOUNT_RANGE` | 注额超出上下限 |
 | `ACC_NOT_FOUND` | 玩家不存在 |
 | `GAME_NOT_FOUND` | 游戏代码无效 |

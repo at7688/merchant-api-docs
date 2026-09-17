@@ -1,0 +1,19 @@
+---
+title: 流程
+description: 单一钱包对接顺序。
+---
+
+单一钱包：玩家余额位于商户。商户仍调用平台的创建玩家与登录接口。下注扣款与派奖由平台对商户 **回调**。
+
+共用规格：[传输协议](/zh-CN/protocol)、[错误码](/zh-CN/errors)。回调规格：[回调](/zh-CN/callback)。
+
+## 对接顺序
+
+1. 取得 `agent_acc`、ApiKey；将调用源 IP 列入白名单。在后台填写商户回调 base URL。
+2. 实现商户 → 平台的加密，以及平台 → 商户回调的解密。密钥相同。
+3. `POST /player/add`、`POST /player/login`。`acc` 不含代理前缀。
+4. 实现回调：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。成功值为字符串 `"OK"`。超时 15 秒。
+5. 以 `sn` 为唯一键保证幂等。玩家掉线后仍须接受 `/player/win`。
+6. 对账：`/bet_rec/query`。`status` 为 `UNKNOWN` 时不得自动退款。
+
+后续接口：[玩家](/zh-CN/player)、[回调](/zh-CN/callback)、[记录](/zh-CN/records)、[免费旋转](/zh-CN/free-round)。

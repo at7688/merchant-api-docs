@@ -11,14 +11,14 @@ description: 成功值仅为 OK。
 |---|---|---|
 | `AGENT_NOT_FOUND` | 外层 `agent_acc` 无法对应代理 | 核对账号 |
 | `IP_NOT_ALLOWED` | 来源 IP 不在白名单 | 更新白名单 |
-| `API_KEY_INVALID` | ApiKey 未设定或长度非 32 bytes | 核对密钥 |
+| `API_KEY_INVALID` | ApiKey 未设定或长度非 32 字节 | 核对密钥 |
 | `DATA_FORMAT_INVALID` | `data` 非合法 hex | 核对编码 |
 | `DECRYPT_FAILED` | 解密失败 | 核对密钥、nonce 排列与明文 JSON |
 | `PARAM_INVALID` | 内层未通过验证 | 核对必填、类型、长度；时间为 Unix 秒 |
 | `IP_BLOCKED` | 来源 IP 或国家被封锁 | 变更来源或申请解除 |
 | `ACC_NOT_ACTIVE` | 商户未启用 | 终止调用 |
 | `ACC_SUSPEND` | 商户已暂停 | 终止调用 |
-| `TOO_MANY_REQUESTS` | 超过列表接口速率（每商户每分钟 10 次） | 降低频率 |
+| `TOO_MANY_REQUESTS` | 超过列表接口限流（每商户每分钟 10 次） | 降低频率 |
 | `INTERNAL_SERVER_ERROR` | 系统错误（伴随 HTTP 500） | 结果未决 |
 
 上述错误在进入业务逻辑前发生。重试得使用原参数；转账不得因此更换 `sn`。
@@ -32,13 +32,13 @@ description: 成功值仅为 OK。
 | `ACC_NOT_ACTIVE` | 玩家未启用 | 拒绝进入游戏 |
 | `ACC_SUSPEND` | 玩家已暂停 | 拒绝进入游戏 |
 | `NAME_EXIST` | 名称重复 | 更换 `name` |
-| `BALANCE_INSUFFICIENT` | 余额不足 | 转账：入金后再出金。单钱包 bet：以此 code 响应平台 |
+| `BALANCE_INSUFFICIENT` | 余额不足 | 转账：上分后再下分。单一钱包 bet：以此 code 响应平台 |
 | `TRANSFER_SN_EXIST` | `sn` 已成功入账 | 调用 `/transfer/check`。非失败 |
 | `TRANSFER_NOT_FOUND` | 无此转账 | 若前次为 HTTP 500，间隔后再查询；仍无则可使用新 `sn` |
 | `GAME_NOT_FOUND` | 游戏代码无效 | 以 `/game/list` 核对 |
 | `GAME_MAINTAIN` | 游戏或类别维护中 | 延后进入 |
 | `BET_AMOUNT_RANGE` | 注额超出该玩家该游戏上下限 | 调整金额 |
-| `FREE_ROUND_CAP` | 超过商户当月赠送名目总额 | 不得重送同一批 |
+| `FREE_ROUND_CAP` | 超过商户当月免费旋转名义总额 | 不得重送同一批 |
 
 ## 结果未决
 
@@ -47,6 +47,6 @@ HTTP 500 或连接中断时，不得假设成功或失败。
 | 场景 | 规定 |
 |---|---|
 | `/transfer/add` | 以原 `sn` 调用 `/transfer/check`。查得记录即已入账；`TRANSFER_NOT_FOUND` 后方可使用新 `sn` |
-| 单钱包 | 以商户账本中该 `sn` 为准。`/bet_rec/query` 返回 `UNKNOWN` 时不得自动退款 |
+| 单一钱包 | 以商户账本中该 `sn` 为准。`/bet_rec/query` 返回 `UNKNOWN` 时不得自动退款 |
 
-单钱包回呼之成功值必须为字符串 `"OK"`。
+单一钱包回调的成功值必须为字符串 `"OK"`。

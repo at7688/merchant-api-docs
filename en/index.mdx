@@ -5,6 +5,17 @@ description: Environments, wallet models, and account rules.
 
 The AT Gaming merchant API covers player accounts, funds, game entry, and reporting. All calls are `HTTPS` `POST` with `Content-Type: application/json; charset=utf-8`. Inner parameters are AES-256-GCM encrypted into outer `data`. See [Protocol](/en/protocol).
 
+Select a wallet model. Encryption and the response envelope are shared; funding interfaces differ.
+
+<CardGroup cols={2}>
+  <Card title="Transfer wallet" href="/en/transfer-guide">
+    Balance on the platform. The merchant posts `/transfer/*`.
+  </Card>
+  <Card title="Seamless wallet" href="/en/seamless-guide">
+    Balance on the merchant. The platform issues [callbacks](/en/callback).
+  </Card>
+</CardGroup>
+
 ## Environments
 
 | Environment | Base URL |
@@ -23,15 +34,6 @@ Source IPs must appear on the merchant whitelist or the response is `IP_NOT_ALLO
 
 The ApiKey must remain server-side. Incident reports include environment, path, `agent_acc`, `trace_id`, and UTC time — never the ApiKey.
 
-## Wallet models
-
-| Model | Balance | Funding |
-|---|---|---|
-| Transfer | Platform | Merchant calls [`/transfer/*`](/en/transfer) |
-| Seamless | Merchant | Platform calls [`/player/balance`](/en/seamless), `/player/bet`, `/player/win`, `/player/bet_refund` |
-
-Player creation, login, and records are shared. Encryption and the response envelope are identical.
-
 ## Accounts
 
 Inner `acc` is the player identifier without the agent prefix. Stored as `{agent_acc}_{acc}` (e.g. `kiwi01_jordan`).
@@ -39,12 +41,12 @@ Inner `acc` is the player identifier without the agent prefix. Stored as `{agent
 | Direction | Field | Example |
 |---|---|---|
 | Merchant → platform | `acc` | `jordan` |
-| Platform → merchant (balance) | `acc` | `kiwi01_jordan` |
-| Platform → merchant (balance) | `player_acc` | `jordan` |
+| Platform → merchant (balance callback) | `acc` | `kiwi01_jordan` |
+| Platform → merchant (balance callback) | `player_acc` | `jordan` |
 | Platform → merchant (bet / win / refund) | `acc` | `jordan` |
 
 A duplicated prefix yields `ACC_NOT_FOUND`.
 
 ## Success
 
-A call succeeds only when JSON `code` equals the string `OK`. HTTP status and the values `200` / `"200"` are not success criteria. See [Error codes](/en/errors).
+A call succeeds only when JSON `code` equals the string `OK`. HTTP status and `"200"` are not success criteria. See [Error codes](/en/errors).

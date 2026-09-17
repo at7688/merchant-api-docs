@@ -5,7 +5,7 @@ description: Grant, cancel, list.
 
 Issues free rounds on a given game. Rounds do not debit the player and do not accrue JP.
 
-On seamless wallets, `/player/win` may still be invoked for wins (payout only). The merchant credits by `sn`.
+On seamless wallets, a win callback may still be issued (payout only). The merchant credits by `sn`.
 
 `bet_amount` is the nominal stake. It must be > 0 and within that player’s min/max for the game (`BET_AMOUNT_RANGE`).
 

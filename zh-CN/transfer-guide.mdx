@@ -1,0 +1,19 @@
+---
+title: 流程
+description: 转账钱包对接顺序。
+---
+
+转账钱包：玩家余额位于平台。商户负责创建玩家、登录，以及经 `/transfer/*` 上分与下分。下注由平台自平台余额扣除。
+
+共用规格：[传输协议](/zh-CN/protocol)、[错误码](/zh-CN/errors)。
+
+## 对接顺序
+
+1. 取得 `agent_acc`、ApiKey；将调用源 IP 列入白名单。
+2. 实现 AES-256-GCM（见协议参考向量）。
+3. `POST /player/add` 创建玩家。`acc` 不含代理前缀。
+4. `POST /transfer/add` 上分。`sn` 为幂等键；HTTP 500 时以原 `sn` 调用 `/transfer/check`。
+5. `POST /player/login` 取得大厅或游戏 URL。
+6. 对账：`/transfer/check`、`/transfer/list`、`/bet_rec/*`。
+
+后续接口：[玩家](/zh-CN/player)、[转账](/zh-CN/transfer)、[记录](/zh-CN/records)、[免费旋转](/zh-CN/free-round)。

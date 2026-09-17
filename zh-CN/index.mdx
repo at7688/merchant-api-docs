@@ -5,6 +5,17 @@ description: 环境、钱包模式与账号规则。
 
 AT Gaming 商户 API 提供玩家账户、资金、游戏进入与账务查询。全部调用为 `HTTPS` `POST`，`Content-Type: application/json; charset=utf-8`。内层参数经 AES-256-GCM 加密后置于外层 `data`。规格见 [传输协议](/zh-CN/protocol)。
 
+按钱包模式选择对接路径。两种模式的加密与响应报文相同，资金接口不同。
+
+<CardGroup cols={2}>
+  <Card title="转账钱包" href="/zh-CN/transfer-guide">
+    余额位于平台。商户调用 `/transfer/*` 上分、下分。
+  </Card>
+  <Card title="单一钱包" href="/zh-CN/seamless-guide">
+    余额位于商户。平台向商户发起 [回调](/zh-CN/callback)。
+  </Card>
+</CardGroup>
+
 ## 环境
 
 | 环境 | Base URL |
@@ -19,32 +30,23 @@ AT Gaming 商户 API 提供玩家账户、资金、游戏进入与账务查询�
 | 字段 | 说明 |
 |---|---|
 | `agent_acc` | 商户代理账号。置于请求外层，不加密 |
-| ApiKey | 64 位十六进制字符（32 bytes），用于内层加解密 |
+| ApiKey | 64 位十六进制字符（32 字节），用于内层加解密 |
 
-ApiKey 仅能出现在服务器端。缺陷报告须提供环境、路径、`agent_acc`、`trace_id` 与 UTC 时间，不得包含 ApiKey。
-
-## 钱包模式
-
-| 模式 | 余额所在 | 资金接口 |
-|---|---|---|
-| 转账钱包 | 平台 | 商户调用 [`/transfer/*`](/zh-CN/transfer) |
-| 单钱包 | 商户 | 平台调用商户 [`/player/balance`](/zh-CN/seamless)、`/player/bet`、`/player/win`、`/player/bet_refund` |
-
-两种模式共用玩家建立、登录与记录查询。加密与响应封套相同。
+ApiKey 仅能置于服务器端。缺陷报告须提供环境、路径、`agent_acc`、`trace_id` 与 UTC 时间，不得包含 ApiKey。
 
 ## 账号
 
-内层 `acc` 为玩家账号（不含代理前缀）。平台存储为 `{agent_acc}_{acc}`。
+内层 `acc` 为玩家账号（不含代理前缀）。平台存储为 `{agent_acc}_{acc}`，例如 `kiwi01_jordan`。
 
 | 方向 | 字段 | 例 |
 |---|---|---|
 | 商户 → 平台 | `acc` | `jordan` |
-| 平台 → 商户（balance） | `acc` | `kiwi01_jordan` |
-| 平台 → 商户（balance） | `player_acc` | `jordan` |
+| 平台 → 商户（回调 balance） | `acc` | `kiwi01_jordan` |
+| 平台 → 商户（回调 balance） | `player_acc` | `jordan` |
 | 平台 → 商户（bet / win / refund） | `acc` | `jordan` |
 
 重复附加前缀将导致 `ACC_NOT_FOUND`。
 
 ## 成功条件
 
-仅当 JSON 字段 `code` 等于字符串 `OK` 时视为成功。不得以 HTTP 状态码或 `"200"` 判定成功。见 [错误码](/zh-CN/errors)。
+仅当 JSON 字段 `code` 等于字符串 `OK` 时视为成功。不得以 HTTP 状态码或字符串 `"200"` 判定成功。见 [错误码](/zh-CN/errors)。

@@ -1,6 +1,6 @@
 ---
-title: 單錢包
-description: 平台對商戶之回呼。Timeout 15 秒。
+title: 回調
+description: 平台對商戶之回調。Timeout 15 秒。
 ---
 
 適用於單錢包。平台對商戶 base URL 發出 `POST`，本文為：
@@ -21,10 +21,10 @@ description: 平台對商戶之回呼。Timeout 15 秒。
 |---|---|---|
 | `/player/balance` | 進入遊戲、重新整理 | 回傳餘額 |
 | `/player/bet` | 下注 | 扣款 |
-| `/player/win` | 結算 | 加款 |
-| `/player/bet_refund` | 注單無法成立 | 退回對應 bet 金額 |
+| `/player/win` | 結算派彩 | 加款 |
+| `/player/refund` | 注單無法成立 | 退回對應 bet 金額 |
 
-逾時為 **15 秒**。逾時後平台不立即重送同一封包；扣款結果未決時可能續發 `bet_refund`。商戶須在時限內完成 HTTP 回應。
+逾時為 **15 秒**。逾時後平台不立即重送同一封包；扣款結果未決時可能續發 `refund`。商戶須在時限內完成 HTTP 回應。
 
 玩家離線後仍可能收到 `/player/win`。不得以離線為由拒絕。
 
@@ -94,6 +94,6 @@ description: 平台對商戶之回呼。Timeout 15 秒。
 
 回應 `data`：`original_balance`（加款前）、`balance`（加款後）。
 
-## POST `{base}/player/bet_refund`
+## POST `{base}/player/refund`
 
 欄位：`sn`、`game_code`、`acc`、`name`、`amount`、`timestamp`。退回對應下注。若該 `sn` 已退款，回應 `OK` 且餘額不變。

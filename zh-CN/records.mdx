@@ -5,7 +5,7 @@ description: 注单、JP、报表、刮刮卡。
 
 查询接口不变更余额。时间为 Unix 秒。`end_at` 须大于 `start_at`，否则 `PARAM_INVALID`。
 
-下列接口速率为每商户每分钟 10 次：`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`。超出为 `TOO_MANY_REQUESTS`。
+下列接口限流为每商户每分钟 10 次：`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`。超出为 `TOO_MANY_REQUESTS`。
 
 `acc` 不含前缀；省略表示该商户全部玩家。
 

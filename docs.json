@@ -19,16 +19,24 @@
             "pages": ["index", "protocol", "errors"]
           },
           {
-            "group": "玩家",
-            "pages": ["player", "transfer"]
+            "group": "轉帳錢包",
+            "pages": [
+              "transfer-guide",
+              "player",
+              "transfer",
+              "records",
+              "free-round"
+            ]
           },
           {
             "group": "單錢包",
-            "pages": ["seamless"]
-          },
-          {
-            "group": "紀錄",
-            "pages": ["records", "free-round"]
+            "pages": [
+              "seamless-guide",
+              "player",
+              "callback",
+              "records",
+              "free-round"
+            ]
           }
         ]
       },
@@ -40,16 +48,24 @@
             "pages": ["zh-CN/index", "zh-CN/protocol", "zh-CN/errors"]
           },
           {
-            "group": "玩家",
-            "pages": ["zh-CN/player", "zh-CN/transfer"]
+            "group": "转账钱包",
+            "pages": [
+              "zh-CN/transfer-guide",
+              "zh-CN/player",
+              "zh-CN/transfer",
+              "zh-CN/records",
+              "zh-CN/free-round"
+            ]
           },
           {
-            "group": "单钱包",
-            "pages": ["zh-CN/seamless"]
-          },
-          {
-            "group": "记录",
-            "pages": ["zh-CN/records", "zh-CN/free-round"]
+            "group": "单一钱包",
+            "pages": [
+              "zh-CN/seamless-guide",
+              "zh-CN/player",
+              "zh-CN/callback",
+              "zh-CN/records",
+              "zh-CN/free-round"
+            ]
           }
         ]
       },
@@ -61,16 +77,24 @@
             "pages": ["en/index", "en/protocol", "en/errors"]
           },
           {
-            "group": "Players",
-            "pages": ["en/player", "en/transfer"]
+            "group": "Transfer wallet",
+            "pages": [
+              "en/transfer-guide",
+              "en/player",
+              "en/transfer",
+              "en/records",
+              "en/free-round"
+            ]
           },
           {
-            "group": "Seamless",
-            "pages": ["en/seamless"]
-          },
-          {
-            "group": "Records",
-            "pages": ["en/records", "en/free-round"]
+            "group": "Seamless wallet",
+            "pages": [
+              "en/seamless-guide",
+              "en/player",
+              "en/callback",
+              "en/records",
+              "en/free-round"
+            ]
           }
         ]
       }

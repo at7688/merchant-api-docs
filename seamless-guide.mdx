@@ -1,0 +1,19 @@
+---
+title: 流程
+description: 單錢包對接順序。
+---
+
+單錢包：玩家餘額位於商戶。商戶仍呼叫平台之建立玩家與登入接口。下注扣款與派彩由平台對商戶 **回調**。
+
+共用規格：[傳輸協議](/protocol)、[錯誤碼](/errors)。回調規格：[回調](/callback)。
+
+## 對接順序
+
+1. 取得 `agent_acc`、ApiKey；將呼叫來源 IP 列入白名單。於後台填入商戶回調 base URL。
+2. 實作商戶 → 平台之加密，以及平台 → 商戶回調之解密。金鑰相同。
+3. `POST /player/add`、`POST /player/login`。`acc` 不含代理前綴。
+4. 實作回調：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。成功值為字串 `"OK"`。逾時 15 秒。
+5. 以 `sn` 為唯一鍵保證冪等。玩家離線後仍須接受 `/player/win`。
+6. 對帳：`/bet_rec/query`。`status` 為 `UNKNOWN` 時不得自動退款。
+
+後續接口：[玩家](/player)、[回調](/callback)、[紀錄](/records)、[贈送旋轉](/free-round)。

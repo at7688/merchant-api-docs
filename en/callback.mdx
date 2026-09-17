@@ -1,5 +1,5 @@
 ---
-title: Seamless
+title: Callbacks
 description: Platform callbacks. Timeout 15 seconds.
 ---
 
@@ -22,11 +22,11 @@ Success: HTTP 200 and JSON `code` equal to the string `"OK"`. `"200"`, numeric `
 | `/player/balance` | Game entry, refresh | Return balance |
 | `/player/bet` | Bet | Debit |
 | `/player/win` | Settlement | Credit |
-| `/player/bet_refund` | Bet cannot complete | Refund that bet |
+| `/player/refund` | Bet cannot complete | Refund that bet |
 
-Timeout is **15 seconds**. The same packet is not resent immediately; an undetermined debit may be followed by `bet_refund`. The HTTP response must complete within the limit.
+Timeout is **15 seconds**. The same packet is not resent immediately; an undetermined debit may be followed by `refund`. The HTTP response must complete within the limit.
 
-`/player/win` may arrive after disconnect. It must not be rejected on that basis.
+`/player/win` may arrive after disconnect and must not be rejected on that basis.
 
 ## Idempotency
 
@@ -84,8 +84,8 @@ Insufficient funds: HTTP 200, `code` `BALANCE_INSUFFICIENT`.
 
 ## POST `{base}/player/win`
 
-Credit. Tournament payouts use `game_code` `TOURNAMENT`. Fields include `beted_at` and `settled_at`. `data`: `original_balance` (before credit), `balance` (after).
+Credit. Tournament payouts use `game_code` `TOURNAMENT`. `data`: `original_balance` (before credit), `balance` (after).
 
-## POST `{base}/player/bet_refund`
+## POST `{base}/player/refund`
 
 Fields: `sn`, `game_code`, `acc`, `name`, `amount`, `timestamp`. Refund the matching bet. If already refunded, return `OK` with unchanged balance.

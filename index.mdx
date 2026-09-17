@@ -3,7 +3,18 @@ title: 概述
 description: 環境、錢包模式與帳號規則。
 ---
 
-AT Gaming 商戶 API 提供玩家帳戶、資金、遊戲進入與帳務查詢。所有呼叫為 `HTTPS` `POST`，`Content-Type: application/json; charset=utf-8`。內層參數經 AES-256-GCM 加密後置於外層 `data`。規格見 [傳輸協議](/protocol)。
+AT Gaming 商戶 API 提供玩家帳戶、資金、遊戲進入與帳務查詢。全部呼叫為 `HTTPS` `POST`，`Content-Type: application/json; charset=utf-8`。內層參數經 AES-256-GCM 加密後置於外層 `data`。規格見 [傳輸協議](/protocol)。
+
+依錢包模式選擇對接路徑。兩種模式之加密與回應封套相同，資金介面不同。
+
+<CardGroup cols={2}>
+  <Card title="轉帳錢包" href="/transfer-guide">
+    餘額位於平台。商戶呼叫 `/transfer/*` 上下分。
+  </Card>
+  <Card title="單錢包" href="/seamless-guide">
+    餘額位於商戶。平台對商戶發出 [回調](/callback)。
+  </Card>
+</CardGroup>
 
 ## 環境
 
@@ -19,18 +30,9 @@ AT Gaming 商戶 API 提供玩家帳戶、資金、遊戲進入與帳務查詢�
 | 欄位 | 說明 |
 |---|---|
 | `agent_acc` | 商戶代理帳號。置於請求外層，不加密 |
-| ApiKey | 64 位十六進位字元（32 bytes），用於內層加解密 |
+| ApiKey | 64 位十六進位字元（32 位元組），用於內層加解密 |
 
-ApiKey 僅能出現在伺服器端。缺陷報告須提供環境、路徑、`agent_acc`、`trace_id` 與 UTC 時間，不得包含 ApiKey。
-
-## 錢包模式
-
-| 模式 | 餘額所在 | 資金接口 |
-|---|---|---|
-| 轉帳錢包 | 平台 | 商戶呼叫 [`/transfer/*`](/transfer) |
-| 單錢包 | 商戶 | 平台呼叫商戶 [`/player/balance`](/seamless)、`/player/bet`、`/player/win`、`/player/bet_refund` |
-
-兩種模式共用玩家建立、登入與紀錄查詢。加密與回應封套相同。
+ApiKey 僅能置於伺服器端。缺陷報告須提供環境、路徑、`agent_acc`、`trace_id` 與 UTC 時間，不得包含 ApiKey。
 
 ## 帳號
 
@@ -39,12 +41,12 @@ ApiKey 僅能出現在伺服器端。缺陷報告須提供環境、路徑、`age
 | 方向 | 欄位 | 例 |
 |---|---|---|
 | 商戶 → 平台 | `acc` | `jordan` |
-| 平台 → 商戶（單錢包 balance） | `acc` | `kiwi01_jordan` |
-| 平台 → 商戶（單錢包 balance） | `player_acc` | `jordan` |
+| 平台 → 商戶（回調 balance） | `acc` | `kiwi01_jordan` |
+| 平台 → 商戶（回調 balance） | `player_acc` | `jordan` |
 | 平台 → 商戶（bet / win / refund） | `acc` | `jordan` |
 
 重複附加前綴將導致 `ACC_NOT_FOUND`。
 
 ## 成功條件
 
-僅當 JSON 欄位 `code` 等於字串 `OK` 時視為成功。不得以 HTTP 狀態碼或數值 `200`、字串 `"200"` 判定成功。錯誤碼見 [錯誤碼](/errors)。
+僅當 JSON 欄位 `code` 等於字串 `OK` 時視為成功。不得以 HTTP 狀態碼或字串 `"200"` 判定成功。見 [錯誤碼](/errors)。
