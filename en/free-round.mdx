@@ -1,0 +1,37 @@
+---
+title: Granted spins
+description: Grant, cancel, list. sn is idempotent. Over the monthly cap returns FREE_ROUND_CAP.
+---
+
+Granted spins **do not debit** the player and do not accrue JP. Seamless `/player/win` may still fire for wins (payout only, no matching bet debit). `bet_amount` is the nominal stake and must be **> 0**.
+
+Reusing `sn` is idempotent; `data.existed` is true on a repeat.
+
+## POST `/free_round/add`
+
+| Field | Required | Notes |
+|---|---|---|
+| `sn` | yes | Campaign id, max 80 |
+| `acc` | yes | Player account without prefix |
+| `game_code` | yes | |
+| `bet_amount` | yes | > 0, within that player's min/max for the game |
+| `count` | yes | 1–100 |
+| `expire_at` | yes | Unix seconds; 0 uses the system default |
+
+Success: `{ "sn": "...", "existed": false }`.
+
+| code | Meaning |
+|---|---|
+| `FREE_ROUND_CAP` | Monthly nominal cap (count × stake) exceeded |
+| `BET_AMOUNT_RANGE` | Stake outside min/max |
+| `ACC_NOT_FOUND` | Player not found |
+
+## POST `/free_round/cancel`
+
+`sn` required. Remaining rounds go to zero.
+
+## POST `/free_round/list`
+
+`page` ≥ 1, `perpage` 1–100. Optional `acc`, `start_at`, `end_at`.
+
+List fields: `sn`, `game_code`, `bet_amount`, `total`, `remain`, `expire_at`, `created_at`.

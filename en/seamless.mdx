@@ -1,0 +1,68 @@
+---
+title: Seamless wallet callbacks
+description: We call you. Timeout 15 seconds. Success code must be OK. Dedupe on sn.
+---
+
+Provide an HTTPS base URL. We POST AES-GCM `{ "data": "<hex>" }`.
+
+Timeout is **15 seconds**. We do **not** immediately retry the same request on timeout; an unknown debit is followed by a refund callback.
+
+On success return HTTP 200 and:
+
+```json
+{ "code": "OK", "data": { ... } }
+```
+
+**Do not return `"code": "200"`.** We only accept `OK`.
+
+Money-moving calls include `sn`. Replays of the same `sn` must return the first result — never debit or credit twice.
+
+`acc` on bet/win/refund is the player account **without** the agent prefix. Balance sends both full `acc` and `player_acc`.
+
+## POST `{base}/player/balance`
+
+| Field | Notes |
+|---|---|
+| `timestamp` | Unix seconds |
+| `acc` | Full account, e.g. `kiwi01_jordan` |
+| `player_acc` | Without prefix, e.g. `jordan` |
+
+Success `data`: `{ "balance": 1680.4 }`.
+
+## POST `{base}/player/bet`
+
+| Field | Notes |
+|---|---|
+| `timestamp` | Unix seconds |
+| `sn` | Order id — **dedupe** |
+| `game_code` | Game code |
+| `acc` | Player account without prefix |
+| `name` | Display name |
+| `amount` | Amount to debit |
+| `beted_at` | Bet time |
+
+Success `data`: `original_balance` (before), `balance` (after).
+
+Insufficient funds: HTTP 200 with a non-OK `code` (e.g. `BALANCE_INSUFFICIENT`).
+
+## POST `{base}/player/win`
+
+Payout (**credit**). May arrive after the player disconnects; do not reject offline players.
+
+| Field | Notes |
+|---|---|
+| `timestamp` | Unix seconds |
+| `sn` | Order id — **dedupe** |
+| `game_code` | Game code. Tournament payouts use `TOURNAMENT` |
+| `acc` | Without prefix |
+| `name` | Display name |
+| `amount` | Amount to **credit** |
+| `beted_at` / `settled_at` | Unix seconds |
+
+Success `data`: `original_balance` (before credit), `balance` (after).
+
+## POST `{base}/player/bet_refund`
+
+Sent when the platform confirms the bet should be reversed. Fields: `sn`, `game_code`, `acc`, `name`, `amount`, `timestamp`.
+
+If that `sn` was already refunded, return `OK` and do not credit again.

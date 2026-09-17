@@ -1,0 +1,42 @@
+---
+title: Game records
+description: Bets, JP, reports, scratch cards. List endpoints are limited to 10 calls per merchant per minute.
+---
+
+Times are Unix seconds. `end_at` must be greater than `start_at`. `acc` is optional.
+
+`/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list` allow **10** calls per merchant per minute (`TOO_MANY_REQUESTS`).
+
+## POST `/game/list`
+
+No inner params. `data.list`: `code`, `name`, `game_category_code`, `game_type_code`, `id`.
+
+## POST `/bet_rec/list`
+
+`page` (≥1), `perpage` (1–1000), `start_at`, `end_at`, optional `acc`.
+
+## POST `/bet_rec/detail`
+
+`sn` (required, max 120), `lang` (BCP 47).
+
+## POST `/bet_rec/query`
+
+Status for up to 100 sns (reconciliation).
+
+| Field | Required | Notes |
+|---|---|---|
+| `sns` | yes | 1–100 ids |
+
+Each item: `sn`, `status`. `UNKNOWN` means we have no record. **Do not treat UNKNOWN as “debit never happened” and refund on your side.** Contact your integration contact.
+
+## POST `/bet_report/list`
+
+`report_unit`: `min` or `day`. `time_unit`: `bet` or `settle`. `perpage` 1–1000.
+
+## POST `/jp_rec/list`, `/jp_rec/detail`
+
+Same shape as bet list/detail.
+
+## POST `/scratch_card_rec/list`
+
+Optional `status`: `PENDING`, `CLAIMED`, `SCRATCHED`. Optional `lang`.

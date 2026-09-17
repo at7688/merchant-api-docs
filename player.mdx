@@ -1,0 +1,54 @@
+---
+title: 玩家
+description: 建立帳號、查餘額（轉帳錢包）、登入、登出。acc 不要帶代理前綴。
+---
+
+內層 `acc` 只送玩家帳號（英數 6–60）。平台會存成 `{agent_acc}_{acc}`。
+
+## POST `/player/add`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `acc` | 是 | 英數 6–60 |
+| `name` | 是 | 最長 30 |
+
+成功 `data`：
+
+```json
+{ "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }
+```
+
+常見錯誤：`ACC_EXIST`。
+
+## POST `/player/balance`
+
+僅**轉帳錢包**（餘額在平台）。單錢包請實作你這邊的 `/player/balance` 給平台查。
+
+| 欄位 | 必填 |
+|---|---|
+| `acc` | 是 |
+
+成功 `data`：`currency`、`balance`。
+
+## POST `/player/login`
+
+回傳大廳或遊戲 URL。
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `acc` | 是 | 英數 6–60 |
+| `lang` | 是 | BCP 47，例如 `zh-TW` |
+| `ip` | 是 | 玩家 IP |
+| `device` | 是 | `DESKTOP` 或 `MOBILE` |
+| `game_code` | 否 | 有值進該遊戲；空值進大廳 |
+| `return_url` | 否 | 合法 URL |
+
+成功 `data`：`{ "url": "https://..." }`。
+
+常見錯誤：`ACC_NOT_FOUND`、`ACC_NOT_ACTIVE`、`ACC_SUSPEND`、`GAME_NOT_FOUND`、`GAME_MAINTAIN`。
+
+## POST `/player/logout`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `acc` | 否 | 省略則登出該商戶下全部會員 |

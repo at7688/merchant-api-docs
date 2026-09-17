@@ -1,0 +1,39 @@
+---
+title: 错误码
+description: 商户 API 的 code 一览。成功只有 OK。
+---
+
+成功只有 **`OK`**。
+
+## 请求没被处理
+
+| code | 说明 |
+|---|---|
+| `AGENT_NOT_FOUND` | 找不到代理账号 |
+| `IP_NOT_ALLOWED` | 来源 IP 不在白名单 |
+| `API_KEY_INVALID` | ApiKey 未设或不合法 |
+| `DATA_FORMAT_INVALID` | `data` 不是合法 hex |
+| `DECRYPT_FAILED` | 解密失败 |
+| `PARAM_INVALID` | 内层参数验证失败 |
+| `IP_BLOCKED` | IP 或国家被封锁 |
+
+## 业务
+
+| code | 说明 |
+|---|---|
+| `ACC_EXIST` | 账号已存在 |
+| `ACC_NOT_FOUND` | 找不到玩家 |
+| `ACC_NOT_ACTIVE` | 账号未启用 |
+| `ACC_SUSPEND` | 账号暂停 |
+| `NAME_EXIST` | 名称已存在 |
+| `BALANCE_INSUFFICIENT` | 余额不足 |
+| `TRANSFER_SN_EXIST` | 转账序号已存在，请用 `/transfer/check` |
+| `TRANSFER_NOT_FOUND` | 找不到转账 |
+| `GAME_NOT_FOUND` | 找不到游戏 |
+| `GAME_MAINTAIN` | 游戏或类别维护中 |
+| `BET_AMOUNT_RANGE` | 注额超出单注上下限 |
+| `FREE_ROUND_CAP` | 赠送旋转超过商户月额度 |
+| `TOO_MANY_REQUESTS` | 列表类每商户每分钟最多 10 次 |
+| `INTERNAL_SERVER_ERROR` | 系统故障（搭配 HTTP 500）。**结果不明** |
+
+单钱包你回给平台时，成功也必须是 **`code: "OK"`**。不要回 `"200"`。

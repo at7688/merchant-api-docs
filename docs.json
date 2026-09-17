@@ -16,7 +16,19 @@
         "groups": [
           {
             "group": "開始",
-            "pages": ["index"]
+            "pages": ["index", "protocol", "errors"]
+          },
+          {
+            "group": "玩家與轉帳",
+            "pages": ["player", "transfer"]
+          },
+          {
+            "group": "單錢包回呼",
+            "pages": ["seamless"]
+          },
+          {
+            "group": "紀錄與活動",
+            "pages": ["records", "free-round"]
           }
         ]
       },
@@ -25,7 +37,19 @@
         "groups": [
           {
             "group": "开始",
-            "pages": ["zh-CN/index"]
+            "pages": ["zh-CN/index", "zh-CN/protocol", "zh-CN/errors"]
+          },
+          {
+            "group": "玩家与转账",
+            "pages": ["zh-CN/player", "zh-CN/transfer"]
+          },
+          {
+            "group": "单钱包回呼",
+            "pages": ["zh-CN/seamless"]
+          },
+          {
+            "group": "记录与活动",
+            "pages": ["zh-CN/records", "zh-CN/free-round"]
           }
         ]
       },
@@ -34,7 +58,19 @@
         "groups": [
           {
             "group": "Get started",
-            "pages": ["en/index"]
+            "pages": ["en/index", "en/protocol", "en/errors"]
+          },
+          {
+            "group": "Players and transfers",
+            "pages": ["en/player", "en/transfer"]
+          },
+          {
+            "group": "Seamless wallet",
+            "pages": ["en/seamless"]
+          },
+          {
+            "group": "Records and campaigns",
+            "pages": ["en/records", "en/free-round"]
           }
         ]
       }

@@ -1,0 +1,39 @@
+---
+title: Error codes
+description: Merchant API codes. Success is only OK.
+---
+
+Success is only **`OK`**.
+
+## Request not processed
+
+| code | Meaning |
+|---|---|
+| `AGENT_NOT_FOUND` | Agent account not found |
+| `IP_NOT_ALLOWED` | Source IP not on the whitelist |
+| `API_KEY_INVALID` | ApiKey missing or invalid |
+| `DATA_FORMAT_INVALID` | `data` is not valid hex |
+| `DECRYPT_FAILED` | Decrypt failed |
+| `PARAM_INVALID` | Inner parameter validation failed |
+| `IP_BLOCKED` | IP or country blocked |
+
+## Business
+
+| code | Meaning |
+|---|---|
+| `ACC_EXIST` | Account already exists |
+| `ACC_NOT_FOUND` | Player not found |
+| `ACC_NOT_ACTIVE` | Account inactive |
+| `ACC_SUSPEND` | Account suspended |
+| `NAME_EXIST` | Name already exists |
+| `BALANCE_INSUFFICIENT` | Insufficient balance |
+| `TRANSFER_SN_EXIST` | Transfer `sn` already used — call `/transfer/check` |
+| `TRANSFER_NOT_FOUND` | Transfer not found |
+| `GAME_NOT_FOUND` | Game not found |
+| `GAME_MAINTAIN` | Game or category under maintenance |
+| `BET_AMOUNT_RANGE` | Stake outside min/max |
+| `FREE_ROUND_CAP` | Granted-spin monthly cap exceeded |
+| `TOO_MANY_REQUESTS` | List endpoints: 10 per merchant per minute |
+| `INTERNAL_SERVER_ERROR` | System fault (with HTTP 500). **Result unknown** |
+
+When you respond to seamless callbacks, success must be **`code: "OK"`**. Do not return `"200"`.

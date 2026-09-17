@@ -1,16 +1,27 @@
 ---
 title: AT Gaming 商户 API
-description: 转账钱包与单钱包对接文档。内容将从现有 Apidog 重写并对齐现行代码。
+description: 转账钱包与单钱包对接。成功一律看 code = OK，不要只看 HTTP 状态码。
 ---
 
-这是 Mintlify 文档站骨架。正式内容尚未迁入。
+所有商户请求都是 **HTTPS POST**、**JSON**、**UTF-8**。内层参数先 JSON，再用商户 **ApiKey**（32-byte hex）做 **AES-256-GCM**，密文 hex 放在外层 `data`。
 
-现行文档入口：
+| | 网址 |
+|---|---|
+| 测试 | `https://api.at-dev.app/api/v1` |
+| 正式 | `https://api.at-gaming.app/api/v1` |
 
-- [转账钱包 API（Apidog）](https://i7fgjp1qg8.apidog.io/)
-- [单钱包 API（Apidog）](https://ytlc8utwtk.apidog.io/)
+请把服务器出口 IP 加进商户白名单。
 
-测试环境：`https://api.at-dev.app/api/v1`  
-正式环境：`https://api.at-gaming.app/api/v1`
+## 两种钱包
 
-成功响应的 `code` 一律为 `OK`（不是 `200`）。请以 `code` 判断，不要只看 HTTP 状态码。
+**转账钱包**：玩家余额在平台。商户调用 `/player/*`、`/transfer/*`。
+
+**单钱包**：玩家余额在商户。商户仍调用同一套建帐／登录／查记录；**下注与派彩由平台调用你的网址**（`/player/balance`、`/player/bet`、`/player/win`、`/player/bet_refund`）。base URL 填在后台。
+
+## 判断结果
+
+- 成功：`code` 为 **`OK`**（不是 `"200"`）。
+- 业务／鉴权错误：多为 **HTTP 200** + 非 OK 的 `code`。
+- **HTTP 500**＝结果不明。body **不一定是 JSON**。转账请再打 `/transfer/check`。
+
+详见 [传输协议](/zh-CN/protocol)、[错误码](/zh-CN/errors)。

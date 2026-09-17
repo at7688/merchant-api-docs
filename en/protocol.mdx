@@ -1,0 +1,54 @@
+---
+title: Protocol
+description: Outer encryption, response envelope, HTTP vs code.
+---
+
+## Outer request
+
+```json
+{
+  "agent_acc": "kiwi01",
+  "data": "<hex of AES-GCM ciphertext>"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `agent_acc` | yes | Merchant agent account, alphanum, max 60 |
+| `data` | yes | Inner JSON after AES-256-GCM, then hex |
+
+### AES-256-GCM
+
+1. Decode ApiKey as 32 bytes (64 hex chars).
+2. Random 12-byte nonce.
+3. Plaintext = UTF-8 JSON of inner params.
+4. Output = `nonce ‖ ciphertext ‖ tag`, then hex.
+5. Tag is 16 bytes.
+
+Seamless callbacks reverse this: we POST `{ "data": "<hex>" }` to you; decrypt with the same key.
+
+## Envelope
+
+```json
+{
+  "api_version": "v1",
+  "message": "",
+  "code": "OK",
+  "data": {},
+  "trace_id": "uuid"
+}
+```
+
+`data` is an object or array, **not a string**. Include `trace_id` when you report issues.
+
+Branch on **`code`**, not HTTP status alone. Sample clients that throw on `!response.ok` without reading the body will miss HTTP 200 business errors and will mis-handle HTTP 500.
+
+## HTTP status
+
+| HTTP | Meaning |
+|---|---|
+| 200 | Handled. Read `code` |
+| 404 | Unknown path |
+| 500 | Result unknown. Body may not be JSON. Check `/transfer/check` for transfers |
+
+Auth/param errors (unknown agent, IP not allowed, decrypt fail, invalid params) are **HTTP 200** with the matching `code`.

@@ -1,0 +1,46 @@
+---
+title: 贈送旋轉
+description: 商戶發放、取消、查詢。活動單號冪等。超過月額度回 FREE_ROUND_CAP。
+---
+
+贈送旋轉**不扣玩家餘額**、不累積 JP。單錢包結算派彩仍可能打你的 `/player/win`（只有贏分、沒有對應 bet 扣款）。`bet_amount` 是名目注額，必須 **> 0**。
+
+同一 `sn` 重送視為同一筆（冪等），成功 `data.existed` 為 true。
+
+## POST `/free_round/add`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `sn` | 是 | 活動單號，最長 80 |
+| `acc` | 是 | 玩家帳號（不要前綴） |
+| `game_code` | 是 | |
+| `bet_amount` | 是 | > 0，須在該玩家該遊戲單注上下限內 |
+| `count` | 是 | 1–100 |
+| `expire_at` | 是 | Unix 秒，0 表示用系統預設有效期 |
+
+成功：`{ "sn": "...", "existed": false }`。
+
+| code | 說明 |
+|---|---|
+| `FREE_ROUND_CAP` | 超過該商戶當月名目總額（轉數×注額） |
+| `BET_AMOUNT_RANGE` | 注額超出上下限 |
+| `ACC_NOT_FOUND` | 找不到玩家 |
+
+## POST `/free_round/cancel`
+
+| 欄位 | 必填 |
+|---|---|
+| `sn` | 是 |
+
+取消後剩餘次數歸零。找不到：`ACC_NOT_FOUND`。
+
+## POST `/free_round/list`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `page` | 是 | ≥ 1 |
+| `perpage` | 是 | 1–100 |
+| `acc` | 否 | |
+| `start_at` / `end_at` | 否 | Unix 秒 |
+
+成功 `list` 欄位：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。

@@ -1,0 +1,45 @@
+---
+title: 轉帳
+description: 轉帳錢包上下分。序號必須唯一；HTTP 500 時用 /transfer/check 確認。
+---
+
+僅**轉帳錢包**。`sn`：英數加 `_` `-`，長度 6–120，必須唯一。`amount` 不可為 0；**正數入金、負數出金**。
+
+## POST `/transfer/add`
+
+| 欄位 | 必填 |
+|---|---|
+| `sn` | 是 |
+| `acc` | 是 |
+| `amount` | 是，≠ 0 |
+
+成功 `data`：`currency`、`balance`（轉帳後餘額）。
+
+| code | 處理 |
+|---|---|
+| `TRANSFER_SN_EXIST` | 同一 `sn` 已處理過，打 `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | 出金餘額不足 |
+| `ACC_NOT_FOUND` | 找不到玩家 |
+
+**HTTP 500**：結果不明。先 `/transfer/check` 再決定要不要換新 `sn` 重送。
+
+## POST `/transfer/check`
+
+| 欄位 | 必填 |
+|---|---|
+| `sn` | 是 |
+| `acc` | 是 |
+
+找不到：`TRANSFER_NOT_FOUND`。成功 `data` 含 `sn`、`amount`、`balance`、`created_at` 與玩家資料。
+
+## POST `/transfer/list`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `page` | 是 | ≥ 1 |
+| `perpage` | 是 | 1–100 |
+| `start_at` | 是 | Unix 秒 |
+| `end_at` | 是 | 須大於 `start_at` |
+| `acc` | 否 | 篩選玩家 |
+
+成功 `data`：`list`、`row_count`、`page_count`。

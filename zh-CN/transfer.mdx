@@ -1,0 +1,28 @@
+---
+title: 转账
+description: 转账钱包上下分。序号必须唯一；HTTP 500 时用 /transfer/check 确认。
+---
+
+仅**转账钱包**。`sn`：英数加 `_` `-`，长度 6–120，必须唯一。`amount` 不可为 0；**正数入金、负数出金**。
+
+## POST `/transfer/add`
+
+| 字段 | 必填 |
+|---|---|
+| `sn` | 是 |
+| `acc` | 是 |
+| `amount` | 是，≠ 0 |
+
+成功 `data`：`currency`、`balance`。
+
+`TRANSFER_SN_EXIST`：同一 `sn` 已处理，打 `/transfer/check`。`BALANCE_INSUFFICIENT`：出金余额不足。
+
+**HTTP 500**：结果不明。先 `/transfer/check` 再决定要不要换新 `sn`。
+
+## POST `/transfer/check`
+
+`sn`、`acc` 必填。找不到：`TRANSFER_NOT_FOUND`。
+
+## POST `/transfer/list`
+
+`page` ≥ 1，`perpage` 1–100，`start_at`／`end_at` 必填（Unix 秒，`end_at` 须大于 `start_at`），`acc` 可选。

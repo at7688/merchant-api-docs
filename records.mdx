@@ -1,0 +1,63 @@
+---
+title: 遊戲紀錄
+description: 注單、JP、報表、刮刮卡。列表類每商戶每分鐘最多 10 次。
+---
+
+時間皆 Unix 秒。`end_at` 必須大於 `start_at`。`acc` 可省略。
+
+`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list` 每商戶每分鐘最多 **10** 次，超出回 `TOO_MANY_REQUESTS`。
+
+## POST `/game/list`
+
+無內層參數。成功 `data.list`：`code`、`name`、`game_category_code`、`game_type_code`、`id`。
+
+## POST `/bet_rec/list`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `page` | 是 | ≥ 1 |
+| `perpage` | 是 | 1–1000 |
+| `start_at` | 是 | |
+| `end_at` | 是 | |
+| `acc` | 否 | |
+
+## POST `/bet_rec/detail`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `sn` | 是 | 最長 120 |
+| `lang` | 是 | BCP 47 |
+
+## POST `/bet_rec/query`
+
+單筆或多筆狀態，給對帳（例如單錢包扣款後結果不明）。
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `sns` | 是 | 1–100 個單號 |
+
+成功 `data.list` 每筆：`sn`、`status`。`status` 可能為注單狀態，或 **`UNKNOWN`**（平台查無此單）。**查無不可自行當成沒扣款去退錢**，請聯絡對接窗口。
+
+## POST `/bet_report/list`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `page` / `perpage` | 是 | perpage 1–1000 |
+| `start_at` / `end_at` | 是 | |
+| `report_unit` | 是 | `min` 或 `day` |
+| `time_unit` | 是 | `bet` 或 `settle` |
+| `acc` | 否 | |
+
+## POST `/jp_rec/list`、`/jp_rec/detail`
+
+參數同注單 list／detail。
+
+## POST `/scratch_card_rec/list`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `page` / `perpage` | 是 | perpage 1–1000 |
+| `start_at` / `end_at` | 是 | |
+| `status` | 否 | `PENDING`、`CLAIMED`、`SCRATCHED` |
+| `acc` | 否 | |
+| `lang` | 否 | BCP 47 |

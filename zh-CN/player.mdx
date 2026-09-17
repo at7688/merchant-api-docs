@@ -1,0 +1,44 @@
+---
+title: 玩家
+description: 建立账号、查余额（转账钱包）、登录、登出。acc 不要带代理前缀。
+---
+
+内层 `acc` 只送玩家账号（英数 6–60）。平台会存成 `{agent_acc}_{acc}`。
+
+## POST `/player/add`
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `acc` | 是 | 英数 6–60 |
+| `name` | 是 | 最长 30 |
+
+成功 `data`：`{ "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }`。
+
+常见错误：`ACC_EXIST`。
+
+## POST `/player/balance`
+
+仅**转账钱包**。单钱包请实现你这边的 `/player/balance`。
+
+| 字段 | 必填 |
+|---|---|
+| `acc` | 是 |
+
+成功 `data`：`currency`、`balance`。
+
+## POST `/player/login`
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `acc` | 是 | 英数 6–60 |
+| `lang` | 是 | BCP 47，例如 `zh-CN` |
+| `ip` | 是 | 玩家 IP |
+| `device` | 是 | `DESKTOP` 或 `MOBILE` |
+| `game_code` | 否 | 有值进该游戏；空值进大厅 |
+| `return_url` | 否 | 合法 URL |
+
+成功 `data`：`{ "url": "https://..." }`。
+
+## POST `/player/logout`
+
+`acc` 可省略；省略则登出该商户下全部会员。

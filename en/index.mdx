@@ -1,16 +1,27 @@
 ---
 title: AT Gaming Merchant API
-description: Transfer-wallet and seamless-wallet integration docs. Content will be rewritten from Apidog to match the live API.
+description: Transfer wallet and seamless wallet. Success is code = OK, not HTTP status alone.
 ---
 
-This is a Mintlify skeleton. Full docs have not been migrated yet.
+Every merchant request is **HTTPS POST**, **JSON**, **UTF-8**. Inner params are JSON, then **AES-256-GCM** with your 32-byte hex **ApiKey**. Put the hex ciphertext in outer `data`.
 
-Current docs:
+| | URL |
+|---|---|
+| Test | `https://api.at-dev.app/api/v1` |
+| Production | `https://api.at-gaming.app/api/v1` |
 
-- [Transfer wallet API (Apidog)](https://i7fgjp1qg8.apidog.io/)
-- [Seamless wallet API (Apidog)](https://ytlc8utwtk.apidog.io/)
+Whitelist your server egress IPs.
 
-Test: `https://api.at-dev.app/api/v1`  
-Production: `https://api.at-gaming.app/api/v1`
+## Two wallet types
 
-A successful `code` is always `OK` (not `200`). Use `code`, not only the HTTP status.
+**Transfer wallet**: player balance lives on the platform. You call `/player/*` and `/transfer/*`.
+
+**Seamless wallet**: player balance lives with you. You still call the same account/login/record APIs. **Bets and payouts are callbacks to your URL** (`/player/balance`, `/player/bet`, `/player/win`, `/player/bet_refund`). Set that base URL in the back office.
+
+## How to read results
+
+- Success: `code` is **`OK`** (not `"200"`).
+- Auth/business errors: usually **HTTP 200** with a non-OK `code`.
+- **HTTP 500** = result unknown. Body **may not be JSON**. For transfers, call `/transfer/check`; do not treat 500 as a confirmed failure.
+
+See [Protocol](/en/protocol) and [Error codes](/en/errors).

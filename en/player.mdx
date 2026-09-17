@@ -1,0 +1,50 @@
+---
+title: Players
+description: Create, balance (transfer wallet), login, logout. Do not send the agent prefix in acc.
+---
+
+Inner `acc` is the player account only (alphanum 6–60). Stored as `{agent_acc}_{acc}`.
+
+## POST `/player/add`
+
+| Field | Required | Notes |
+|---|---|---|
+| `acc` | yes | alphanum 6–60 |
+| `name` | yes | max 30 |
+
+Success `data`: `{ "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }`.
+
+Error: `ACC_EXIST`.
+
+## POST `/player/balance`
+
+**Transfer wallet only.** Seamless merchants implement `/player/balance` on their side.
+
+| Field | Required |
+|---|---|
+| `acc` | yes |
+
+Success `data`: `currency`, `balance`.
+
+## POST `/player/login`
+
+Returns a lobby or game URL.
+
+| Field | Required | Notes |
+|---|---|---|
+| `acc` | yes | alphanum 6–60 |
+| `lang` | yes | BCP 47, e.g. `zh-TW` |
+| `ip` | yes | Player IP |
+| `device` | yes | `DESKTOP` or `MOBILE` |
+| `game_code` | no | Omit to open the lobby |
+| `return_url` | no | Valid URL |
+
+Success `data`: `{ "url": "https://..." }`.
+
+Errors: `ACC_NOT_FOUND`, `ACC_NOT_ACTIVE`, `ACC_SUSPEND`, `GAME_NOT_FOUND`, `GAME_MAINTAIN`.
+
+## POST `/player/logout`
+
+| Field | Required | Notes |
+|---|---|---|
+| `acc` | no | Omit to log out all members under the merchant |

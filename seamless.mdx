@@ -1,0 +1,71 @@
+---
+title: 單錢包回呼
+description: 平台呼叫商戶。Timeout 15 秒。成功 code 必須是 OK。請用 sn 去重。
+---
+
+單錢包商戶必須提供 HTTPS base URL。平台會 **AES-GCM** 加密後 POST `{ "data": "<hex>" }`。
+
+Timeout **15 秒**。逾時平台**不會當下重試同一請求**；扣款結果不明時會走退款回呼（見下）。
+
+成功請回 HTTP 200，且 JSON：
+
+```json
+{ "code": "OK", "data": { ... } }
+```
+
+**不要回 `"code": "200"`**，平台只認 `OK`。
+
+所有動錢請求都帶 `sn`。同一 `sn` 重送必須回第一次的結果，**不可再扣一次或再加一次**。
+
+`acc` 是去掉代理前綴的玩家帳號。查餘額另外帶完整 `acc`（含前綴）與 `player_acc`。
+
+## POST `{base}/player/balance`
+
+| 欄位 | 說明 |
+|---|---|
+| `timestamp` | Unix 秒 |
+| `acc` | 完整帳號，例如 `kiwi01_jordan` |
+| `player_acc` | 去前綴，例如 `jordan` |
+
+成功 `data`：`{ "balance": 1680.4 }`。
+
+## POST `{base}/player/bet`
+
+下注扣款。
+
+| 欄位 | 說明 |
+|---|---|
+| `timestamp` | Unix 秒 |
+| `sn` | 訂單編號，請去重 |
+| `game_code` | 遊戲代碼 |
+| `acc` | 玩家帳號（去前綴） |
+| `name` | 玩家名稱 |
+| `amount` | 扣除金額 |
+| `beted_at` | 下注時間 Unix 秒 |
+
+成功 `data`：`original_balance`（扣前）、`balance`（扣後）。
+
+餘額不足請回非 OK 的 `code`（例如 `BALANCE_INSUFFICIENT`），HTTP 200。
+
+## POST `{base}/player/win`
+
+結算派獎（**加錢**）。玩家斷線時仍可能送來，請勿因離線拒絕。
+
+| 欄位 | 說明 |
+|---|---|
+| `timestamp` | Unix 秒 |
+| `sn` | 訂單編號，請去重 |
+| `game_code` | 遊戲代碼。錦標賽派獎為 `TOURNAMENT` |
+| `acc` | 玩家帳號（去前綴） |
+| `name` | 玩家名稱 |
+| `amount` | **添加**金額 |
+| `beted_at` | 下注時間 |
+| `settled_at` | 結算時間 |
+
+成功 `data`：`original_balance`（加前）、`balance`（加後）。
+
+## POST `{base}/player/bet_refund`
+
+平台確認該注應退回時呼叫（例如扣款後無法完成下注）。欄位同下注：`sn`、`game_code`、`acc`、`name`、`amount`、`timestamp`。
+
+同一 `sn` 已退過請回 `OK`，不要再加一次錢。

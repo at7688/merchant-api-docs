@@ -1,0 +1,54 @@
+---
+title: 传输协议
+description: 外层加密、标准信封、HTTP 状态码与 code 的关系。
+---
+
+## 外层请求
+
+```json
+{
+  "agent_acc": "kiwi01",
+  "data": "<AES-GCM 密文的 hex>"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `agent_acc` | 是 | 商户代理账号，英数，最长 60 |
+| `data` | 是 | 内层 JSON 经 AES-256-GCM 后再 hex |
+
+### AES-256-GCM
+
+1. ApiKey 解成 32 bytes（64 个 hex 字符）。
+2. 随机 12-byte nonce。
+3. 明文 = 内层参数的 UTF-8 JSON。
+4. 输出 = `nonce ‖ ciphertext ‖ tag`，再整段 hex。
+5. 标签 16 bytes。
+
+单钱包回呼方向相反：平台 POST `{ "data": "<hex>" }` 到你的网址，你用同一把 ApiKey 解密。
+
+## 标准信封
+
+```json
+{
+  "api_version": "v1",
+  "message": "",
+  "code": "OK",
+  "data": {},
+  "trace_id": "uuid"
+}
+```
+
+`data` 是对象或数组，**不是字符串**。对账或报障请带 `trace_id`。
+
+请用 **`code`** 判断，不要只用 HTTP 状态码。若遇到非 2xx 就丢异常、不读 body，会漏掉 HTTP 200 的业务错误，也会把 500 的不明结果当成传输失败。
+
+## HTTP 状态码
+
+| HTTP | 含义 |
+|---|---|
+| 200 | 已处理。看 `code` |
+| 404 | 路径不存在 |
+| 500 | 结果不明。body 不一定是 JSON。转账请 `/transfer/check` |
+
+鉴权／参数类错误现为 **HTTP 200 + 对应 `code`**。

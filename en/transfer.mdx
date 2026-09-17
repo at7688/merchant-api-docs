@@ -1,0 +1,45 @@
+---
+title: Transfers
+description: Transfer-wallet credit/debit. sn must be unique. On HTTP 500, confirm with /transfer/check.
+---
+
+**Transfer wallet only.** `sn`: alphanum plus `_` `-`, length 6–120, unique. `amount` must not be 0; **positive credits, negative debits**.
+
+## POST `/transfer/add`
+
+| Field | Required |
+|---|---|
+| `sn` | yes |
+| `acc` | yes |
+| `amount` | yes, ≠ 0 |
+
+Success `data`: `currency`, `balance` (after the transfer).
+
+| code | What to do |
+|---|---|
+| `TRANSFER_SN_EXIST` | Same `sn` already processed — `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | Debit exceeds balance |
+| `ACC_NOT_FOUND` | Player not found |
+
+**HTTP 500**: unknown result. Call `/transfer/check` before retrying with a new `sn`.
+
+## POST `/transfer/check`
+
+| Field | Required |
+|---|---|
+| `sn` | yes |
+| `acc` | yes |
+
+Missing: `TRANSFER_NOT_FOUND`. Success includes `sn`, `amount`, `balance`, `created_at`.
+
+## POST `/transfer/list`
+
+| Field | Required | Notes |
+|---|---|---|
+| `page` | yes | ≥ 1 |
+| `perpage` | yes | 1–100 |
+| `start_at` | yes | Unix seconds |
+| `end_at` | yes | must be greater than `start_at` |
+| `acc` | no | |
+
+Success `data`: `list`, `row_count`, `page_count`.

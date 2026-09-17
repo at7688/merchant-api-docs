@@ -1,0 +1,56 @@
+---
+title: 傳輸協議
+description: 外層加密、標準信封、HTTP 狀態碼與 code 的關係。
+---
+
+## 外層請求
+
+每個端點（例如 `/player/add`）實際送出：
+
+```json
+{
+  "agent_acc": "kiwi01",
+  "data": "<AES-GCM 密文的 hex>"
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `agent_acc` | 是 | 商戶代理帳號，英數，最長 60 |
+| `data` | 是 | 內層 JSON 經 AES-256-GCM 後再 hex |
+
+### AES-256-GCM
+
+1. ApiKey 解成 32 bytes（64 個 hex 字元）。
+2. 隨機 12-byte nonce。
+3. 明文 = 內層參數的 UTF-8 JSON。
+4. 輸出 = `nonce ‖ ciphertext ‖ tag`，再整段 hex。
+5. 標籤 16 bytes（128-bit）。
+
+單錢包回呼方向相反：平台 POST `{ "data": "<hex>" }` 到你的網址，你用同一把 ApiKey 解密。
+
+## 標準信封
+
+```json
+{
+  "api_version": "v1",
+  "message": "",
+  "code": "OK",
+  "data": {},
+  "trace_id": "uuid"
+}
+```
+
+`data` 是物件或陣列，**不是字串**。對帳或報障請帶 `trace_id`。
+
+請用 **`code`** 判斷，不要用 HTTP 狀態碼當唯一依據。範例若遇到 `!response.ok` 就丟例外、不讀 body，會把 HTTP 200 的業務錯誤漏掉，也會把 500 的不明結果當成傳輸失敗。
+
+## HTTP 狀態碼
+
+| HTTP | 意義 |
+|---|---|
+| 200 | 已處理。看 `code`：`OK` 成功，其餘為錯誤 |
+| 404 | 路徑不存在 |
+| 500 | 結果不明。body 不一定是 JSON。轉帳請 `/transfer/check` |
+
+鑑權／參數類錯誤（找不到代理、IP 不在白名單、解密失敗、參數不合法等）現為 **HTTP 200 + 對應 `code`**。
