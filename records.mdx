@@ -11,7 +11,7 @@ description: 注單、JP、報表、刮刮卡。
 |---|---|
 | `/bet_rec/list` | `updated_at`（異動時間，含結算）。僅用下注時間會漏掉「區間內才結算」的單 |
 | `/jp_rec/list` | `created_at` |
-| `/bet_report/list` | `beted_date` 或 `settled_date`／分鐘欄，值為 UTC+8 當日 00:00 之 Unix 秒 |
+| `/bet_report/list` | `beted_date` 或 `settled_date`／分鐘欄，值為 UTC+8（`Asia/Shanghai`）當日 00:00 之 Unix 秒 |
 | `/scratch_card_rec/list` | `updated_at`（狀態變更時間） |
 | `/transfer/list` | `created_at` |
 | `/free_round/list` | `created_at` |
@@ -127,7 +127,7 @@ description: 注單、JP、報表、刮刮卡。
 | `sn` | string | 查詢之單號 |
 | `status` | string | `PENDING`（含已收下、寫庫前）、`PROCESSING`、`FINISH`、`CANCEL`，或 `UNKNOWN`（查無） |
 
-單號前 6 碼若為 `YYMMDD`（UTC+8 日期）則用於分區裁剪；否則仍可查詢。`UNKNOWN` 不得據以自動退款。
+單號前 6 碼若為 `YYMMDD`（UTC+8／`Asia/Shanghai` 日期）則用於分區裁剪；否則仍可查詢。`UNKNOWN` 不得據以自動退款。
 </Card>
 
 ## POST `/bet_report/list`

@@ -11,7 +11,7 @@ description: 注单、JP、报表、刮刮卡。
 |---|---|
 | `/bet_rec/list` | `updated_at`（含结算）。只用下注时间会漏掉区间内才结算的单 |
 | `/jp_rec/list` | `created_at` |
-| `/bet_report/list` | `beted_date` 或 `settled_date`／分钟，值为 UTC+8 当日 00:00 的 Unix 秒 |
+| `/bet_report/list` | `beted_date` 或 `settled_date`／分钟，值为 UTC+8（`Asia/Shanghai`）当日 00:00 的 Unix 秒 |
 | `/scratch_card_rec/list` | `updated_at` |
 | `/transfer/list` | `created_at` |
 | `/free_round/list` | `created_at` |

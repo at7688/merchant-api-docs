@@ -11,7 +11,7 @@ Time columns are **not** always bet time:
 |---|---|
 | `/bet_rec/list` | `updated_at` (includes settlement). Filtering by bet time misses bets settled inside the window |
 | `/jp_rec/list` | `created_at` |
-| `/bet_report/list` | `beted_date` or `settled_date` / minute, Unix seconds at UTC+8 00:00 |
+| `/bet_report/list` | `beted_date` or `settled_date` / minute, Unix seconds at UTC+8 (`Asia/Shanghai`) 00:00 |
 | `/scratch_card_rec/list` | `updated_at` |
 | `/transfer/list` | `created_at` |
 | `/free_round/list` | `created_at` |
@@ -62,7 +62,7 @@ Request: `sn`, `lang` (BCP 47). Response `data.url`: result-page URL.
 
 ## POST `/bet_rec/query`
 
-Request: `sns` (1–100). Response `list[]`: `sn`, `status` (`PENDING` including accepted-not-yet-written, `PROCESSING`, `FINISH`, `CANCEL`, or `UNKNOWN`). If the first six characters of `sn` are `YYMMDD` (UTC+8), they prune partitions. `UNKNOWN` must not trigger an automatic refund.
+Request: `sns` (1–100). Response `list[]`: `sn`, `status` (`PENDING` including accepted-not-yet-written, `PROCESSING`, `FINISH`, `CANCEL`, or `UNKNOWN`). If the first six characters of `sn` are `YYMMDD` (UTC+8, `Asia/Shanghai`), they prune partitions. `UNKNOWN` must not trigger an automatic refund.
 
 ## POST `/bet_report/list`
 
