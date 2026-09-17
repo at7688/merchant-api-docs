@@ -1,80 +1,50 @@
 ---
 title: Overview
-description: Follow this page to land your first API call.
+description: Environments, wallet models, and account rules.
 ---
 
-This guide is for engineers integrating AT Gaming. Follow the steps below. If something fails, use **Common issues** first, then contact us with `trace_id`.
+The AT Gaming merchant API covers player accounts, funds, game entry, and reporting. All calls are `HTTPS` `POST` with `Content-Type: application/json; charset=utf-8`. Inner parameters are AES-256-GCM encrypted into outer `data`. See [Protocol](/en/protocol).
 
-<Note>
-Success means JSON `code` is `OK`. Do not treat HTTP status as the only signal, and do not treat `"200"` as success.
-</Note>
+## Environments
 
-## What you receive
-
-| Item | Use |
+| Environment | Base URL |
 |---|---|
-| `agent_acc` | Merchant agent id on the **outer** body (not encrypted) |
-| ApiKey | 64 hex chars (32 bytes) to encrypt inner JSON |
 | Test | `https://api.at-dev.app/api/v1` |
 | Production | `https://api.at-gaming.app/api/v1` |
 
-Send your **server egress IPs** to be whitelisted. Laptop IPs change; use a fixed test host.
+Source IPs must appear on the merchant whitelist or the response is `IP_NOT_ALLOWED`.
 
-## Which wallet
+## Credentials
 
-<AccordionGroup>
-  <Accordion title="Transfer wallet (balance on AT)">
-    You create players, log them in, and move money with `/transfer/add`. Bets debit the platform balance.
-  </Accordion>
-  <Accordion title="Seamless wallet (balance on your side)">
-    You still create players and log them in. **We call your HTTPS URL** for `/player/balance`, `/player/bet`, `/player/win`, `/player/bet_refund`. You must **dedupe on `sn`**. See [Seamless](/en/seamless).
-  </Accordion>
-</AccordionGroup>
-
-Encryption and envelope: [Protocol](/en/protocol).
-
-## Integration order
-
-<Steps>
-  <Step title="Whitelist and keys">
-    Confirm test IP, `agent_acc`, and ApiKey match the back office.
-  </Step>
-  <Step title="Encrypt a sample">
-    Match the [protocol](/en/protocol) test vector, then switch to a random nonce.
-  </Step>
-  <Step title="Create a player">
-    `POST /player/add`. Send `acc` **without** the agent prefix.
-  </Step>
-  <Step title="Transfer wallet: small credit">
-    `POST /transfer/add` with a positive `amount`. On HTTP 500, call `/transfer/check` — do not mint a new `sn` yet.
-  </Step>
-  <Step title="Login">
-    `POST /player/login` and open `data.url`.
-  </Step>
-  <Step title="Seamless: implement balance first">
-    Then bet/win, always unique on `sn`.
-  </Step>
-</Steps>
-
-## How `acc` works
-
-You send `acc: "jordan"`. We store `{agent_acc}_jordan` (e.g. `kiwi01_jordan`).
-
-- You → us: send **`jordan` only**
-- Us → you (seamless): `player_acc` is `jordan`; `acc` on balance is the full `kiwi01_jordan`
-
-Sending `kiwi01_jordan` becomes `kiwi01_kiwi01_jordan` → `ACC_NOT_FOUND`.
-
-## Common issues
-
-| Symptom | Check |
+| Field | Description |
 |---|---|
-| `AGENT_NOT_FOUND` | Outer `agent_acc` matches back office (lowercase) |
-| `IP_NOT_ALLOWED` | Real egress IP (NAT / cloud NAT) is whitelisted |
-| `DECRYPT_FAILED` | 64-hex key, blob is `nonce+ciphertext+tag`, UTF-8 JSON |
-| `PARAM_INVALID` | Types, lengths, Unix **seconds** (10 digits), not ms |
-| `ACC_NOT_FOUND` | Extra prefix? Player created? |
-| HTTP 500 | **Unknown result**. Transfer: `/transfer/check`. Do not reverse blindly |
-| Seamless payout fails | Your `code` must be the string `"OK"`, not `200` |
+| `agent_acc` | Merchant agent account. Outer body, not encrypted |
+| ApiKey | 64 hex characters (32 bytes) for inner encrypt/decrypt |
 
-When you contact us: environment, path, `agent_acc`, **`trace_id`**, UTC time. **Never** send the ApiKey.
+The ApiKey must remain server-side. Incident reports include environment, path, `agent_acc`, `trace_id`, and UTC time — never the ApiKey.
+
+## Wallet models
+
+| Model | Balance | Funding |
+|---|---|---|
+| Transfer | Platform | Merchant calls [`/transfer/*`](/en/transfer) |
+| Seamless | Merchant | Platform calls [`/player/balance`](/en/seamless), `/player/bet`, `/player/win`, `/player/bet_refund` |
+
+Player creation, login, and records are shared. Encryption and the response envelope are identical.
+
+## Accounts
+
+Inner `acc` is the player identifier without the agent prefix. Stored as `{agent_acc}_{acc}` (e.g. `kiwi01_jordan`).
+
+| Direction | Field | Example |
+|---|---|---|
+| Merchant → platform | `acc` | `jordan` |
+| Platform → merchant (balance) | `acc` | `kiwi01_jordan` |
+| Platform → merchant (balance) | `player_acc` | `jordan` |
+| Platform → merchant (bet / win / refund) | `acc` | `jordan` |
+
+A duplicated prefix yields `ACC_NOT_FOUND`.
+
+## Success
+
+A call succeeds only when JSON `code` equals the string `OK`. HTTP status and the values `200` / `"200"` are not success criteria. See [Error codes](/en/errors).

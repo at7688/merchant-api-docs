@@ -1,40 +1,61 @@
 ---
 title: Seamless
-description: We call you. Timeout 15s.
+description: Platform callbacks. Timeout 15 seconds.
 ---
 
-For **seamless** merchants only.
+Seamless wallet only. The platform `POST`s to the merchant base URL:
 
-We POST `{ "data": "<AES-GCM hex>" }` to your base URL. Decrypt with the **same** ApiKey.
+```json
+{ "data": "<AES-GCM hex>" }
+```
+
+The key matches the merchant ApiKey. Layout: [Protocol](/en/protocol).
 
 <Warning>
-Success = HTTP 200 and `"code": "OK"` (string). `"200"`, `200`, or `"success"` are treated as failures.
+Success: HTTP 200 and JSON `code` equal to the string `"OK"`. `"200"`, numeric `200`, and other strings are failures.
 </Warning>
 
-| Path | When | You do |
+## Endpoints
+
+| Path | When | Semantics |
 |---|---|---|
-| `/player/balance` | Enter game / refresh | Return balance |
-| `/player/bet` | Place bet | **Debit**, unique on `sn` |
-| `/player/win` | Settle | **Credit**, unique on `sn` |
-| `/player/bet_refund` | Bet cannot complete | **Refund that bet**, unique on `sn` |
+| `/player/balance` | Game entry, refresh | Return balance |
+| `/player/bet` | Bet | Debit |
+| `/player/win` | Settlement | Credit |
+| `/player/bet_refund` | Bet cannot complete | Refund that bet |
 
-Timeout **15 seconds**. We do not immediately resend the same packet; an unknown debit may be followed by `bet_refund`. Always respond within 15s.
+Timeout is **15 seconds**. The same packet is not resent immediately; an undetermined debit may be followed by `bet_refund`. The HTTP response must complete within the limit.
 
-## Dedupe
+`/player/win` may arrive after disconnect. It must not be rejected on that basis.
 
-1. New `sn` → apply, store result, return `OK`
-2. Same `sn`, previous success → return the **same** body, do not change balance
-3. Same `sn`, previous reject → return the same error `code`
+## Idempotency
 
-Players may disconnect before `win`. Still accept it.
+Money-moving calls include `sn` as a unique key.
+
+| State | Behaviour |
+|---|---|
+| Unknown `sn` | Apply debit/credit, persist, return `OK` |
+| Already succeeded | Return the first body; balance unchanged |
+| Already rejected | Return the first error `code` |
 
 ## POST `{base}/player/balance`
 
 ```json
-{ "timestamp": 1758723906, "acc": "kiwi01_jordan", "player_acc": "jordan" }
+{
+  "timestamp": 1758723906,
+  "acc": "kiwi01_jordan",
+  "player_acc": "jordan"
+}
 ```
 
-`acc` is prefixed; `player_acc` is not. Success: `{ "code": "OK", "data": { "balance": 1680.4 } }`.
+| Field | Description |
+|---|---|
+| `acc` | Prefixed |
+| `player_acc` | Unprefixed |
+
+```json
+{ "code": "OK", "data": { "balance": 1680.4 } }
+```
 
 ## POST `{base}/player/bet`
 
@@ -50,20 +71,21 @@ Players may disconnect before `win`. Still accept it.
 }
 ```
 
-Here `acc` has **no** prefix. Success `data`: `original_balance` (before debit), `balance` (after). Insufficient funds: HTTP 200 + `BALANCE_INSUFFICIENT`.
+`acc` is unprefixed. `amount` is the debit (positive).
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 1000, "balance": 900 }
+}
+```
+
+Insufficient funds: HTTP 200, `code` `BALANCE_INSUFFICIENT`.
 
 ## POST `{base}/player/win`
 
-This **credits**. Tournament payouts use `game_code` `TOURNAMENT`. Include `beted_at` and `settled_at`.
+Credit. Tournament payouts use `game_code` `TOURNAMENT`. Fields include `beted_at` and `settled_at`. `data`: `original_balance` (before credit), `balance` (after).
 
 ## POST `{base}/player/bet_refund`
 
-Refund the matching bet `sn`. If already refunded, return `OK` and do not credit again.
-
-## Checklist
-
-- [ ] Same `sn` on bet twice → one debit
-- [ ] Same `sn` on win twice → one credit
-- [ ] `"OK"` not `"200"`
-- [ ] Respond within 15s
-- [ ] Accept win after disconnect
+Fields: `sn`, `game_code`, `acc`, `name`, `amount`, `timestamp`. Refund the matching bet. If already refunded, return `OK` with unchanged balance.

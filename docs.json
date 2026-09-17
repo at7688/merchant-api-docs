@@ -15,7 +15,7 @@
         "default": true,
         "groups": [
           {
-            "group": "開始",
+            "group": "總則",
             "pages": ["index", "protocol", "errors"]
           },
           {
@@ -36,7 +36,7 @@
         "language": "zh-CN",
         "groups": [
           {
-            "group": "开始",
+            "group": "通则",
             "pages": ["zh-CN/index", "zh-CN/protocol", "zh-CN/errors"]
           },
           {
@@ -57,7 +57,7 @@
         "language": "en",
         "groups": [
           {
-            "group": "Get started",
+            "group": "General",
             "pages": ["en/index", "en/protocol", "en/errors"]
           },
           {

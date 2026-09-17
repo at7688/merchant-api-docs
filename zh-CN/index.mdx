@@ -1,63 +1,50 @@
 ---
 title: 简介
-description: 先看这页就能打通第一支 API。
+description: 环境、钱包模式与账号规则。
 ---
 
-这份文档给要对接 AT Gaming 的工程师。按下面做，第一支请求就能打通。卡住时先对照「常见问题」，再带 `trace_id` 找对接窗口。
+AT Gaming 商户 API 提供玩家账户、资金、游戏进入与账务查询。全部调用为 `HTTPS` `POST`，`Content-Type: application/json; charset=utf-8`。内层参数经 AES-256-GCM 加密后置于外层 `data`。规格见 [传输协议](/zh-CN/protocol)。
 
-<Note>
-成功只看 JSON 里的 `code` 是否为 `OK`。不要用 HTTP 状态码当唯一依据，也不要把 `"200"` 当成成功。
-</Note>
+## 环境
 
-## 你会拿到什么
-
-| 项目 | 用途 |
+| 环境 | Base URL |
 |---|---|
-| `agent_acc` | 商户代理账号，放在请求外层，**不加密** |
-| ApiKey | 64 个 hex 字符（32 bytes），用来加密内层参数 |
 | 测试 | `https://api.at-dev.app/api/v1` |
 | 正式 | `https://api.at-gaming.app/api/v1` |
 
-请先把**调用 API 的服务器出口 IP** 交给对接窗口加入白名单。笔记本 IP 会变，建议用测试机。
+来源 IP 须列入该商户白名单，否则响应 `IP_NOT_ALLOWED`。
 
-## 两种钱包
+## 凭证
 
-<AccordionGroup>
-  <Accordion title="转账钱包（余额在平台）">
-    玩家点数存在 AT。你负责建帐、登录、把钱转入／转出平台。
-  </Accordion>
-  <Accordion title="单钱包（余额在你那边）">
-    玩家点数在你的系统。你同样要建帐、登录。**下注与派彩由平台打你的 HTTPS 网址**。必须实现 `/player/balance`、`/player/bet`、`/player/win`、`/player/bet_refund`，并用 `sn` 去重。见 [单钱包](/zh-CN/seamless)。
-  </Accordion>
-</AccordionGroup>
-
-加密与信封见 [传输协议](/zh-CN/protocol)。
-
-## 建议对接顺序
-
-<Steps>
-  <Step title="白名单与密钥">确认测试 IP、`agent_acc`、ApiKey 与后台一致。</Step>
-  <Step title="加密一笔内层 JSON">用协议页测试向量核对，再换成随机 nonce。</Step>
-  <Step title="建一个测试玩家">`POST /player/add`。`acc` **不要**加代理前缀。</Step>
-  <Step title="转账钱包：转一笔小额">`POST /transfer/add`。若 HTTP 500，打 `/transfer/check`，不要立刻换新单号。</Step>
-  <Step title="登录拿游戏网址">`POST /player/login`，打开 `url`。</Step>
-  <Step title="单钱包：先实现 balance">再做 bet／win，且必须用 `sn` 去重。</Step>
-</Steps>
-
-## 账号怎么写
-
-你送 `acc: "jordan"`。平台存 `{agent_acc}_jordan`。你调用我们只送 `jordan`。送成 `kiwi01_jordan` 会变成双前缀，然后 `ACC_NOT_FOUND`。
-
-## 常见问题
-
-| 现象 | 先检查 |
+| 字段 | 说明 |
 |---|---|
-| `AGENT_NOT_FOUND` | 外层 `agent_acc` 是否与后台一致 |
-| `IP_NOT_ALLOWED` | 实际出口 IP 是否在白名单 |
-| `DECRYPT_FAILED` | ApiKey、nonce+密文+tag、UTF-8 JSON |
-| `PARAM_INVALID` | 必填、长度、Unix **秒**（不是毫秒） |
-| `ACC_NOT_FOUND` | 是否多加了前缀；是否已 add |
-| HTTP 500 | **结果不明**。转账用 `/transfer/check` |
-| 单钱包派彩失败 | 你回的 `code` 必须是 `"OK"`，不是 `"200"` |
+| `agent_acc` | 商户代理账号。置于请求外层，不加密 |
+| ApiKey | 64 位十六进制字符（32 bytes），用于内层加解密 |
 
-报障请附：环境、路径、`agent_acc`、**`trace_id`**、UTC 时间。**不要**贴 ApiKey。
+ApiKey 仅能出现在服务器端。缺陷报告须提供环境、路径、`agent_acc`、`trace_id` 与 UTC 时间，不得包含 ApiKey。
+
+## 钱包模式
+
+| 模式 | 余额所在 | 资金接口 |
+|---|---|---|
+| 转账钱包 | 平台 | 商户调用 [`/transfer/*`](/zh-CN/transfer) |
+| 单钱包 | 商户 | 平台调用商户 [`/player/balance`](/zh-CN/seamless)、`/player/bet`、`/player/win`、`/player/bet_refund` |
+
+两种模式共用玩家建立、登录与记录查询。加密与响应封套相同。
+
+## 账号
+
+内层 `acc` 为玩家账号（不含代理前缀）。平台存储为 `{agent_acc}_{acc}`。
+
+| 方向 | 字段 | 例 |
+|---|---|---|
+| 商户 → 平台 | `acc` | `jordan` |
+| 平台 → 商户（balance） | `acc` | `kiwi01_jordan` |
+| 平台 → 商户（balance） | `player_acc` | `jordan` |
+| 平台 → 商户（bet / win / refund） | `acc` | `jordan` |
+
+重复附加前缀将导致 `ACC_NOT_FOUND`。
+
+## 成功条件
+
+仅当 JSON 字段 `code` 等于字符串 `OK` 时视为成功。不得以 HTTP 状态码或 `"200"` 判定成功。见 [错误码](/zh-CN/errors)。

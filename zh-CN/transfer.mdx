@@ -1,35 +1,58 @@
 ---
 title: 转账
-description: 上下分。sn 必须唯一。
+description: 转账钱包入金与出金。
 ---
 
-仅**转账钱包**。把 `sn` 当成银行汇款编号：同一笔业务只能用一次。
+适用于转账钱包。`sn` 为幂等键：同一业务事件对应唯一 `sn`。
 
-`amount` 不能为 0。正数＝玩家入金到平台；负数＝从平台出金。时间是 Unix **秒**。
+| 字段 | 约束 |
+|---|---|
+| `sn` | 英数与 `_` `-`，长度 6–120 |
+| `acc` | 玩家账号，不含前缀 |
+| `amount` | 不得为 0。正数为入金（商户 → 平台），负数为出金（平台 → 商户） |
+| 时间 | Unix 秒 |
 
 ## POST `/transfer/add`
 
-入金 100：`{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }`
+```json
+{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
+```
 
-出金 50：`"amount": -50`。
+出金例：`"amount": -50`。
 
-成功 `data.balance` 是**这笔完成后**的平台余额。
+```json
+{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
+```
 
-<Steps>
-  <Step title="code = OK">入帐完成，同一 sn 不要再送。</Step>
-  <Step title="TRANSFER_SN_EXIST">以前就成功过。打 `/transfer/check`，不要换 sn 再转。</Step>
-  <Step title="BALANCE_INSUFFICIENT">出金失败。</Step>
-  <Step title="HTTP 500 或断线">**结果不明**。用**同一个 sn** `/transfer/check`。查得到＝已入帐；`TRANSFER_NOT_FOUND` 才可以换新 sn。</Step>
-</Steps>
+`balance` 为该笔完成后之平台余额。
 
-<Warning>
-不要在 500 之后立刻用新的 sn 再转一次。
-</Warning>
+| code | 语义 | 处理 |
+|---|---|---|
+| `OK` | 入账完成 | 不得重用该 `sn` |
+| `TRANSFER_SN_EXIST` | 该 `sn` 已成功入账 | 调用 `/transfer/check`。非失败 |
+| `BALANCE_INSUFFICIENT` | 出金余额不足 | 未入账 |
+| `ACC_NOT_FOUND` | 玩家不存在 | 未入账 |
+
+HTTP 500 或连接中断表示结果未决。须以**原 `sn`** 调用 `/transfer/check`：查得记录即已入账；`TRANSFER_NOT_FOUND` 后方可使用新 `sn`。于 500 后立即更换 `sn` 重送可导致重复入账。
 
 ## POST `/transfer/check`
 
-`sn`、`acc` 必填。
+```json
+{ "sn": "T20260917-0001", "acc": "jordan" }
+```
+
+无记录时 `code` 为 `TRANSFER_NOT_FOUND`。
 
 ## POST `/transfer/list`
 
-每商户每分钟最多 10 次。`page` ≥ 1，`perpage` 1–100，`end_at` 必须大于 `start_at`。
+速率限制：每商户每分钟 10 次。
+
+| 字段 | 必填 | 约束 |
+|---|---|---|
+| `page` | 是 | ≥ 1 |
+| `perpage` | 是 | 1–100 |
+| `start_at` | 是 | Unix 秒 |
+| `end_at` | 是 | 须大于 `start_at` |
+| `acc` | 否 | |
+
+响应 `data`：`list`、`row_count`、`page_count`。

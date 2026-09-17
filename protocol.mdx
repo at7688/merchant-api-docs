@@ -1,68 +1,60 @@
 ---
 title: 傳輸協議
-description: 加密、信封、HTTP 與 code。
+description: 封套、AES-256-GCM、HTTP 與 code。
 ---
 
-所有商戶 API 都是：
+## 請求
 
-- 方法：`POST`
-- `Content-Type: application/json`
-- 字元：UTF-8
-- 路徑接在 base 後面，例如 `https://api.at-dev.app/api/v1/player/add`
+| 項目 | 規定 |
+|---|---|
+| 方法 | `POST` |
+| 標頭 | `Content-Type: application/json` |
+| 編碼 | UTF-8 |
+| URL | `{base}{path}`，例如 `https://api.at-dev.app/api/v1/player/add` |
 
-## 外層（不加密）
+### 外層
 
 ```json
 {
   "agent_acc": "kiwi01",
-  "data": "<內層加密後的 hex>"
+  "data": "<ciphertext hex>"
 }
 ```
 
-| 欄位 | 必填 | 規則 |
-|---|---|---|
-| `agent_acc` | 是 | 英數，最長 60，與後台代理帳號相同 |
-| `data` | 是 | 只含 0-9a-f 的 hex 字串 |
+| 欄位 | 必填 | 型別 | 約束 |
+|---|---|---|---|
+| `agent_acc` | 是 | string | 英數，長度 ≤ 60，對應後台代理帳號 |
+| `data` | 是 | string | 內層明文加密後之十六進位 |
 
-`agent_acc` 放外層是為了讓我們知道用哪一把 ApiKey 解密。
+### 內層
 
-## 內層（要加密）
-
-先組成 JSON 物件，例如：
+UTF-8 JSON 物件，欄位為 snake_case。該位元組序列為 GCM 明文。例：
 
 ```json
 {"acc":"jordan","name":"Amy"}
 ```
 
-欄位名用 **snake_case**。不要包一層多餘的 `data`。這個 JSON 的 UTF-8 bytes 才是明文。
-
 ## AES-256-GCM
 
-| 項目 | 值 |
+| 參數 | 值 |
 |---|---|
 | 演算法 | AES-256-GCM |
-| ApiKey | 64 個 hex 字元 → 32 bytes |
-| nonce | **12 bytes**，每次請求**必須重新隨機** |
+| 金鑰 | ApiKey 十六進位解碼，長度 32 bytes |
+| nonce | 12 bytes，每個請求獨立隨機，禁止重用 |
 | tag | 16 bytes |
-| 輸出順序 | `nonce ‖ ciphertext ‖ tag`，再轉 hex |
+| 密文排列 | `nonce ‖ ciphertext ‖ tag`，再編碼為 hex |
 
-正式環境**禁止**重用 nonce。下面測試向量只用固定 nonce 讓你核對實作，**不要拿這把 key 當正式金鑰**。
+單錢包回呼使用同一金鑰與同一排列；平台請求僅含 `{ "data": "<hex>" }`。
 
-<Accordion title="測試向量（核對你的加密是否正確）">
-明文（一字不差）：
+### 參考向量
 
-```text
-{"acc":"jordan","name":"Amy"}
-```
+僅供實作核對，不得作為正式金鑰。明文為 `{"acc":"jordan","name":"Amy"}`（無空白、無換行）。
 
 | | hex |
 |---|---|
 | key | `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` |
 | nonce | `000102030405060708090a0b` |
-| 應得到的 data | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
-
-對不上時，先確認 JSON 沒有空白、沒有換行、key 順序與上列相同。
-</Accordion>
+| data | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
 
 <CodeGroup>
 ```javascript Node.js
@@ -73,8 +65,7 @@ function encrypt(plain, keyHex) {
   const nonce = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, nonce);
   const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-  const tag = cipher.getAuthTag(); // 16 bytes
-  return Buffer.concat([nonce, enc, tag]).toString("hex");
+  return Buffer.concat([nonce, enc, cipher.getAuthTag()]).toString("hex");
 }
 ```
 
@@ -85,19 +76,12 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 def encrypt(plain: str, key_hex: str) -> str:
     key = binascii.unhexlify(key_hex)
     nonce = os.urandom(12)
-    ct = AESGCM(key).encrypt(nonce, plain.encode("utf-8"), None)  # 含 tag
+    ct = AESGCM(key).encrypt(nonce, plain.encode("utf-8"), None)
     return (nonce + ct).hex()
-```
-
-```go Go
-// nonce 12 bytes + gcm.Seal；輸出 hex(nonce || ciphertextAndTag)
-// 標準庫 cipher.NewGCM + aes.NewCipher，key 長度必須是 32
 ```
 </CodeGroup>
 
-讀回應時：**先 `JSON.parse` body**，再看 `code`。不要寫 `if (!response.ok) throw` 就結束——HTTP 200 也可能是業務錯誤；HTTP 500 的 body 甚至不是 JSON。
-
-## 我們回你的信封
+## 回應
 
 ```json
 {
@@ -109,29 +93,22 @@ def encrypt(plain: str, key_hex: str) -> str:
 }
 ```
 
-| 欄位 | 說明 |
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `code` | string | 成功值僅為 `OK` |
+| `data` | object \| array \| null | 非字串 |
+| `trace_id` | string | 日誌關聯識別 |
+
+用戶端須先解析 JSON，再讀取 `code`。不得在未讀取 body 的情況下僅依 HTTP 狀態中止處理。
+
+## HTTP 狀態
+
+| 狀態 | 語意 |
 |---|---|
-| `code` | **唯一成功值是 `OK`**。其他都是錯誤 |
-| `data` | 物件或陣列，**不是字串** |
-| `trace_id` | 對帳、報障請帶這組。沒有它客服無法查 log |
+| 200 | 請求已處理。成功與否以 `code` 為準 |
+| 404 | 路徑不存在 |
+| 500 | 結果未決。body 未必為 JSON |
 
-## HTTP 狀態碼怎麼用
+代理不存在、來源 IP 未授權、解密失敗、參數不合法等，回應 **HTTP 200** 且 `code` 為對應錯誤值。
 
-| HTTP | 你該做的事 |
-|---|---|
-| 200 且 `code=OK` | 成功，用 `data` |
-| 200 且 `code≠OK` | 業務或鑑權錯誤，依 [錯誤碼](/errors) 處理。**這筆請求沒有成功** |
-| 404 | 路徑寫錯，檢查 base + `/player/add` 這類路徑 |
-| 500 | **結果不明**（可能已入帳、也可能沒有）。body 不一定是 JSON。轉帳請 `/transfer/check`；單錢包請用 `sn` 對你自己的帳本，必要時再打 `/bet_rec/query` |
-
-找不到代理、IP 不在白名單、解密失敗、參數不合法：現在是 **HTTP 200 + 對應 `code`**。
-
-## 單錢包方向相反
-
-平台打你時，body 只有：
-
-```json
-{ "data": "<hex>" }
-```
-
-用同一把 ApiKey 解密。你回我們時請用明文 JSON（見 [單錢包](/seamless)），成功 `code` 必須是 `"OK"`。
+HTTP 500 表示結果未決：轉帳須以同一 `sn` 呼叫 `/transfer/check`；單錢包須以商戶帳本及 `/bet_rec/query` 核對，不得逕行沖正。

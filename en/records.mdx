@@ -3,36 +3,74 @@ title: Records
 description: Bets, JP, reports, scratch cards.
 ---
 
-Read-only. Unix **seconds**. `end_at` must be greater than `start_at`.
+Query APIs do not mutate balance. Times are Unix seconds. `end_at` must exceed `start_at` or the response is `PARAM_INVALID`.
 
-These four are limited to **10** calls per merchant per minute: `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`.
+Rate limit (10 / merchant / minute): `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`. Exceeding the limit returns `TOO_MANY_REQUESTS`.
 
-`acc` is the player id without prefix; omit for all players.
+`acc` excludes the prefix; omitted means all players under the merchant.
 
 ## POST `/game/list`
 
-Inner `{}` is fine. Each item: `code` (use as `game_code`), `name`, `game_category_code`, `game_type_code`, `id`.
+Inner body may be `{}`. `data.list` items:
+
+| Field | Description |
+|---|---|
+| `code` | Game code (`game_code` on login) |
+| `name` | Localised name |
+| `game_category_code` | Category |
+| `game_type_code` | Type |
+| `id` | Internal id |
 
 ## POST `/bet_rec/list`
 
-`page` ≥ 1, `perpage` 1–1000, `start_at`, `end_at`, optional `acc`. Success: `list`, `row_count`, `page_count`.
+| Field | Required | Constraints |
+|---|---|---|
+| `page` | yes | ≥ 1 |
+| `perpage` | yes | 1–1000 |
+| `start_at` / `end_at` | yes | Unix seconds |
+| `acc` | no | |
+
+`data`: `list`, `row_count`, `page_count`.
 
 ## POST `/bet_rec/detail`
 
-`{ "sn": "...", "lang": "en" }`. `lang` is required (BCP 47).
+| Field | Required | Constraints |
+|---|---|---|
+| `sn` | yes | ≤ 120 |
+| `lang` | yes | BCP 47 |
 
 ## POST `/bet_rec/query`
 
-Up to 100 sns. Response items: `sn`, `status`. `UNKNOWN` means we have no row — **do not auto-refund**. Contact ops with the sn.
+| Field | Required | Constraints |
+|---|---|---|
+| `sns` | yes | 1–100 identifiers |
+
+Items: `sn`, `status`. `UNKNOWN` means no platform row. It must not trigger an automatic refund.
 
 ## POST `/bet_report/list`
 
-`report_unit`: `min` or `day`. `time_unit`: `bet` or `settle`.
+| Field | Required | Constraints |
+|---|---|---|
+| `page` / `perpage` | yes | perpage 1–1000 |
+| `start_at` / `end_at` | yes | |
+| `report_unit` | yes | `min` \| `day` |
+| `time_unit` | yes | `bet` \| `settle` |
+| `acc` | no | |
 
-## POST `/jp_rec/list`, `/jp_rec/detail`
+## POST `/jp_rec/list`
 
-Same shape as bet list / detail.
+Same parameters as `/bet_rec/list`.
+
+## POST `/jp_rec/detail`
+
+Same parameters as `/bet_rec/detail`.
 
 ## POST `/scratch_card_rec/list`
 
-Optional `status`: `PENDING`, `CLAIMED`, `SCRATCHED`.
+| Field | Required | Constraints |
+|---|---|---|
+| `page` / `perpage` | yes | perpage 1–1000 |
+| `start_at` / `end_at` | yes | |
+| `status` | no | `PENDING` \| `CLAIMED` \| `SCRATCHED` |
+| `acc` | no | |
+| `lang` | no | BCP 47 |

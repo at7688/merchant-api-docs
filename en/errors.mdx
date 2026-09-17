@@ -1,48 +1,52 @@
 ---
 title: Error codes
-description: Success is only OK.
+description: Success value is only OK.
 ---
 
-Only **`OK`** is success. Other codes are failures, but **recovery differs**.
+`code` `OK` denotes success. Any other value denotes failure. `data` is `null` on most errors.
 
-## Not processed yet
+## Transport and authentication
 
-Fix and retry the **same** call. Do not mint a new transfer `sn`.
-
-| code | Cause | What you do |
+| code | Definition | Handling |
 |---|---|---|
-| `AGENT_NOT_FOUND` | Outer `agent_acc` mismatch | Match back office, lowercase |
-| `IP_NOT_ALLOWED` | Egress IP not whitelisted | Send the real egress IP |
-| `API_KEY_INVALID` | Missing or not 32 bytes | Ask ops to check the key |
-| `DATA_FORMAT_INVALID` | `data` is not hex | Output hex |
-| `DECRYPT_FAILED` | Key / nonce / tag / JSON | Use the protocol test vector |
-| `PARAM_INVALID` | Inner validation | Required fields, lengths, Unix **seconds** |
-| `IP_BLOCKED` | IP or country blocked | Contact ops; do not hammer |
-| `ACC_NOT_ACTIVE` / `ACC_SUSPEND` | Merchant disabled | Contact ops |
+| `AGENT_NOT_FOUND` | Outer `agent_acc` does not match an agent | Verify the account |
+| `IP_NOT_ALLOWED` | Source IP not whitelisted | Update the whitelist |
+| `API_KEY_INVALID` | ApiKey missing or not 32 bytes | Verify the key |
+| `DATA_FORMAT_INVALID` | `data` is not hex | Verify encoding |
+| `DECRYPT_FAILED` | Decrypt failed | Verify key, nonce layout, JSON |
+| `PARAM_INVALID` | Inner validation failed | Required fields, types, Unix seconds |
+| `IP_BLOCKED` | IP or country blocked | Change source or request unblock |
+| `ACC_NOT_ACTIVE` | Merchant inactive | Stop |
+| `ACC_SUSPEND` | Merchant suspended | Stop |
+| `TOO_MANY_REQUESTS` | List rate exceeded (10 / merchant / minute) | Reduce frequency |
+| `INTERNAL_SERVER_ERROR` | Fault (with HTTP 500) | Outcome undetermined |
 
-## Business outcomes
+Retry may reuse the original parameters. Transfer `sn` must not be replaced for these codes.
 
-| code | Cause | What you do |
+## Business
+
+| code | Definition | Handling |
 |---|---|---|
-| `ACC_EXIST` | Player already created | Treat as created; login |
-| `ACC_NOT_FOUND` | No such player | `/player/add`; no extra prefix |
+| `ACC_EXIST` | Player already exists | Treat as created |
+| `ACC_NOT_FOUND` | Player does not exist | `/player/add`; no extra prefix |
+| `ACC_NOT_ACTIVE` | Player inactive | Deny game entry |
+| `ACC_SUSPEND` | Player suspended | Deny game entry |
 | `NAME_EXIST` | Duplicate name | Change `name` |
-| `BALANCE_INSUFFICIENT` | Not enough balance | Credit first, or return this code on seamless bet |
-| `TRANSFER_SN_EXIST` | This `sn` already succeeded | **Not a failure.** `/transfer/check` |
-| `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, wait and check; then new `sn` if still missing |
-| `GAME_NOT_FOUND` | Bad game code | `/game/list` |
-| `GAME_MAINTAIN` | Maintenance | Retry later |
-| `BET_AMOUNT_RANGE` | Stake outside min/max | Change stake |
-| `FREE_ROUND_CAP` | Monthly grant cap | Do not retry the same batch |
-| `TOO_MANY_REQUESTS` | 10 list calls / merchant / minute | Slow down |
-| `INTERNAL_SERVER_ERROR` | Fault | Next section |
+| `BALANCE_INSUFFICIENT` | Insufficient balance | Transfer: credit first. Seamless bet: return this code |
+| `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
+| `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, requery; then a new `sn` is allowed |
+| `GAME_NOT_FOUND` | Invalid game code | `/game/list` |
+| `GAME_MAINTAIN` | Maintenance | Defer entry |
+| `BET_AMOUNT_RANGE` | Stake outside min/max | Adjust amount |
+| `FREE_ROUND_CAP` | Monthly grant cap exceeded | Do not resubmit the batch |
 
-## HTTP 500 / unknown result
+## Undetermined outcome
 
-Do **not** assume success or failure.
+HTTP 500 or a dropped connection does not imply success or failure.
 
-1. Transfers: `/transfer/check` with the **same** `sn`. Found = posted; `TRANSFER_NOT_FOUND` = safe to use a new `sn`.
-2. Seamless: your ledger for that `sn`; optional `/bet_rec/query`. `UNKNOWN` → **do not auto-refund**. Contact ops with the sn.
-3. Include `trace_id`. Never send the ApiKey.
+| Context | Rule |
+|---|---|
+| `/transfer/add` | `/transfer/check` with the original `sn`. A row means posted; `TRANSFER_NOT_FOUND` allows a new `sn` |
+| Seamless | Merchant ledger for that `sn`. `/bet_rec/query` `UNKNOWN` must not trigger an automatic refund |
 
-When you respond to us, success must be the string **`"OK"`**.
+Seamless callback success is the string `"OK"`.

@@ -3,15 +3,15 @@ title: 贈送旋轉
 description: 發放、取消、查詢。
 ---
 
-讓指定玩家在指定遊戲免費轉 N 次。這些轉**不扣玩家餘額**、不累積 JP。
+向指定玩家發放指定遊戲之免費旋轉。該等旋轉不扣除玩家餘額、不計入 JP。
 
-單錢包：玩家用贈送旋轉贏分時，我們仍可能打你的 `/player/win`（只有派彩，沒有對應的 bet 扣款）。請照 `sn` 加錢，不要因為沒看到 bet 就拒絕。
+單錢包結算時，平台仍可能對商戶發出 `/player/win`（僅派彩、無對應 bet）。商戶須依 `sn` 加款。
 
-`bet_amount` 是名目注額，必須 **> 0**，且落在該玩家該遊戲的單注上下限，否則 `BET_AMOUNT_RANGE`。
+`bet_amount` 為名目注額，須大於 0，且位於該玩家該遊戲單注上下限內，否則 `BET_AMOUNT_RANGE`。
 
 ## POST `/free_round/add`
 
-`sn` 是你的活動單號，**重送同一 sn 不會再送一次**（冪等）。第二次成功時 `existed` 為 `true`。
+`sn` 為冪等鍵。重複提交回傳 `existed: true`，不重複發放。
 
 ```json
 {
@@ -24,25 +24,27 @@ description: 發放、取消、查詢。
 }
 ```
 
-| 欄位 | 必填 | 規則 |
+| 欄位 | 必填 | 約束 |
 |---|---|---|
-| `sn` | 是 | 最長 80 |
-| `acc` | 是 | 不要前綴 |
-| `game_code` | 是 | 須為有效遊戲 |
+| `sn` | 是 | 長度 ≤ 80 |
+| `acc` | 是 | 不含前綴 |
+| `game_code` | 是 | 有效遊戲代碼 |
 | `bet_amount` | 是 | > 0 |
 | `count` | 是 | 1–100 |
-| `expire_at` | 是 | Unix 秒；`0` 表示用系統預設有效期 |
+| `expire_at` | 是 | Unix 秒；`0` 表示系統預設有效期 |
 
-成功：`{ "sn": "FR-20260917-001", "existed": false }`。
+```json
+{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
+```
 
-| code | 處理 |
+| code | 定義 |
 |---|---|
-| `FREE_ROUND_CAP` | 當月名目總額（次數 × 注額）超過商戶上限。不要重試同一批 |
-| `BET_AMOUNT_RANGE` | 改注額 |
-| `ACC_NOT_FOUND` | 先建帳 |
-| `GAME_NOT_FOUND` | 核對 game_code |
+| `FREE_ROUND_CAP` | 當月名目總額（次數 × 注額）超過上限 |
+| `BET_AMOUNT_RANGE` | 注額超出上下限 |
+| `ACC_NOT_FOUND` | 玩家不存在 |
+| `GAME_NOT_FOUND` | 遊戲代碼無效 |
 
-遊戲端畫面（剩幾轉、鎖定注額）需遊戲配合，見對接窗口。平台會在玩家旋轉時自動消耗次數。
+剩餘次數由平台於旋轉時扣減。
 
 ## POST `/free_round/cancel`
 
@@ -50,15 +52,15 @@ description: 發放、取消、查詢。
 { "sn": "FR-20260917-001" }
 ```
 
-剩餘次數歸零。找不到該活動：`ACC_NOT_FOUND`。已用掉的轉不會從歷史注單刪除。
+剩餘次數歸零。已消耗次數仍保留於注單歷史。無此活動時 `ACC_NOT_FOUND`。
 
 ## POST `/free_round/list`
 
-| 欄位 | 必填 | 規則 |
+| 欄位 | 必填 | 約束 |
 |---|---|---|
 | `page` | 是 | ≥ 1 |
 | `perpage` | 是 | 1–100 |
 | `acc` | 否 | |
 | `start_at` / `end_at` | 否 | Unix 秒 |
 
-`list` 每筆：`sn`、`game_code`、`bet_amount`、`total`（發放次數）、`remain`（剩餘）、`expire_at`、`created_at`。
+`list` 元素：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。

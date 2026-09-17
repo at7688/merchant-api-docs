@@ -1,64 +1,60 @@
 ---
 title: Protocol
-description: Encryption, envelope, HTTP vs code.
+description: Envelope, AES-256-GCM, HTTP vs code.
 ---
 
-All merchant APIs:
+## Request
 
-- `POST`
-- `Content-Type: application/json`
-- UTF-8
-- Path after the base, e.g. `https://api.at-dev.app/api/v1/player/add`
+| Item | Rule |
+|---|---|
+| Method | `POST` |
+| Header | `Content-Type: application/json` |
+| Encoding | UTF-8 |
+| URL | `{base}{path}` |
 
-## Outer body (not encrypted)
+### Outer body
 
 ```json
 {
   "agent_acc": "kiwi01",
-  "data": "<hex of encrypted inner JSON>"
+  "data": "<ciphertext hex>"
 }
 ```
 
-| Field | Required | Rules |
-|---|---|---|
-| `agent_acc` | yes | alphanum, max 60 |
-| `data` | yes | hex only |
+| Field | Required | Type | Constraints |
+|---|---|---|---|
+| `agent_acc` | yes | string | alphanum, ≤ 60 |
+| `data` | yes | string | hex of the encrypted inner JSON |
 
-We use `agent_acc` to pick the ApiKey.
+### Inner body
 
-## Inner JSON (encrypt this)
+UTF-8 JSON object, snake_case. Those bytes are the GCM plaintext.
 
 ```json
 {"acc":"jordan","name":"Amy"}
 ```
 
-snake_case fields. Do not wrap in another `data`. UTF-8 bytes of this JSON are the plaintext.
-
 ## AES-256-GCM
 
-| | |
+| Parameter | Value |
 |---|---|
 | Algorithm | AES-256-GCM |
-| ApiKey | 64 hex chars → 32 bytes |
-| nonce | **12 bytes**, **new random value every request** |
+| Key | ApiKey decoded from hex, 32 bytes |
+| nonce | 12 bytes, unique per request |
 | tag | 16 bytes |
-| Wire format | `nonce ‖ ciphertext ‖ tag`, then hex |
+| Layout | `nonce ‖ ciphertext ‖ tag`, then hex |
 
-Never reuse a nonce in production. The vector below uses a fixed nonce **only** so you can verify your code. **Do not use this key live.**
+Seamless callbacks use the same key and layout. The platform body is `{ "data": "<hex>" }`.
 
-<Accordion title="Test vector">
-Plaintext (exact bytes):
+### Reference vector
 
-```text
-{"acc":"jordan","name":"Amy"}
-```
+Verification only — not a production key. Plaintext `{"acc":"jordan","name":"Amy"}` with no whitespace.
 
 | | hex |
 |---|---|
 | key | `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` |
 | nonce | `000102030405060708090a0b` |
-| expected `data` | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
-</Accordion>
+| data | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
 
 <CodeGroup>
 ```javascript Node.js
@@ -69,8 +65,7 @@ function encrypt(plain, keyHex) {
   const nonce = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, nonce);
   const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([nonce, enc, tag]).toString("hex");
+  return Buffer.concat([nonce, enc, cipher.getAuthTag()]).toString("hex");
 }
 ```
 
@@ -86,9 +81,7 @@ def encrypt(plain: str, key_hex: str) -> str:
 ```
 </CodeGroup>
 
-Parse JSON **before** looking at `code`. Do not `throw` on `!response.ok` and stop — HTTP 200 can still be a business error; HTTP 500 may not even be JSON.
-
-## Envelope we return
+## Response
 
 ```json
 {
@@ -100,19 +93,22 @@ Parse JSON **before** looking at `code`. Do not `throw` on `!response.ok` and st
 }
 ```
 
-`code` success value is only `OK`. `data` is an object or array, not a string. Always keep `trace_id` for support.
+| Field | Type | Description |
+|---|---|---|
+| `code` | string | Success value is only `OK` |
+| `data` | object \| array \| null | Not a string |
+| `trace_id` | string | Log correlation id |
+
+Parse JSON, then read `code`. Do not abort solely on HTTP status without reading the body.
 
 ## HTTP status
 
-| HTTP | What you do |
+| Status | Meaning |
 |---|---|
-| 200 and `code=OK` | Success |
-| 200 and `code≠OK` | Failed. See [errors](/en/errors) |
-| 404 | Wrong path |
-| 500 | **Unknown result**. Transfers: `/transfer/check`. Seamless: trust your ledger + `/bet_rec/query` |
+| 200 | Processed. Outcome is `code` |
+| 404 | Unknown path |
+| 500 | Outcome undetermined. Body may not be JSON |
 
-Unknown agent, IP not allowed, decrypt/param errors: **HTTP 200** with a `code`.
+Unknown agent, unlisted IP, decrypt failure, and invalid parameters return **HTTP 200** with an error `code`.
 
-## Seamless reverse direction
-
-We POST `{ "data": "<hex>" }` to you. Decrypt with the same key. You respond with **plain** JSON; success `code` must be `"OK"`.
+HTTP 500: transfers use the same `sn` on `/transfer/check`. Seamless wallets reconcile against the merchant ledger and `/bet_rec/query`. Reversals must not be assumed.

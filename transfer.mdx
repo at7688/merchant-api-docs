@@ -1,18 +1,16 @@
 ---
 title: 轉帳
-description: 上下分。sn 必須唯一。
+description: 轉帳錢包入金與出金。
 ---
 
-僅**轉帳錢包**。單錢包不要打這些接口。
+適用於轉帳錢包。`sn` 為冪等鍵：同一業務事件對應唯一 `sn`，重複提交不會重複入帳。
 
-把 `sn` 當成銀行匯款編號：同一筆業務只能用一次。我們用它保證**重送不會轉兩次**。
-
-| 欄位通則 | 規則 |
+| 欄位 | 約束 |
 |---|---|
-| `sn` | 英數與 `_` `-`，6–120。建議 `{商戶單號}`，不要用純時間戳以免碰撞 |
-| `acc` | 玩家帳號，不要前綴 |
-| `amount` | **不能是 0**。正數＝玩家入金到平台；負數＝從平台出金到你那邊 |
-| 時間 | Unix **秒** |
+| `sn` | 英數與 `_` `-`，長度 6–120 |
+| `acc` | 玩家帳號，不含前綴 |
+| `amount` | 不得為 0。正數為入金（商戶 → 平台），負數為出金（平台 → 商戶） |
+| 時間 | Unix 秒 |
 
 ## POST `/transfer/add`
 
@@ -20,42 +18,22 @@ description: 上下分。sn 必須唯一。
 { "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
 ```
 
-出金 50：
-
-```json
-{ "sn": "T20260917-0002", "acc": "jordan", "amount": -50 }
-```
-
-成功：
+出金例：`"amount": -50`。
 
 ```json
 { "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
 ```
 
-`balance` 是**這筆完成後**的平台餘額。
+`balance` 為該筆完成後之平台餘額。
 
-### 務必這樣處理結果
+| code | 語意 | 處理 |
+|---|---|---|
+| `OK` | 入帳完成 | 不得重用該 `sn` |
+| `TRANSFER_SN_EXIST` | 該 `sn` 已成功入帳 | 呼叫 `/transfer/check`。非失敗 |
+| `BALANCE_INSUFFICIENT` | 出金餘額不足 | 未入帳 |
+| `ACC_NOT_FOUND` | 玩家不存在 | 未入帳 |
 
-<Steps>
-  <Step title="code = OK">
-    入帳完成，記在你的帳本，**同一 sn 不要再送**。
-  </Step>
-  <Step title="TRANSFER_SN_EXIST">
-    這個 sn 以前就成功過。打 `/transfer/check` 取餘額，**不要當失敗、不要換 sn 再轉一次**。
-  </Step>
-  <Step title="BALANCE_INSUFFICIENT">
-    出金時平台餘額不夠。這筆沒轉成功，可換新 sn 或等玩家有餘額。
-  </Step>
-  <Step title="HTTP 500 或連線中斷">
-    **結果不明**。用**同一個 sn** 打 `/transfer/check`：
-    - 查得到 → 已入帳
-    - `TRANSFER_NOT_FOUND` → 尚未入帳，才可以換新 sn 重送
-  </Step>
-</Steps>
-
-<Warning>
-不要在 500 之後立刻用新的 sn 再轉一次，玩家會被轉兩次。
-</Warning>
+HTTP 500 或連線中斷表示結果未決。須以**原 `sn`** 呼叫 `/transfer/check`：查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn`。於 500 後立即更換 `sn` 重送可導致重複入帳。
 
 ## POST `/transfer/check`
 
@@ -63,18 +41,18 @@ description: 上下分。sn 必須唯一。
 { "sn": "T20260917-0001", "acc": "jordan" }
 ```
 
-找不到：`TRANSFER_NOT_FOUND`。成功會帶回 `sn`、`amount`、`balance`、`created_at`。
+無紀錄時 `code` 為 `TRANSFER_NOT_FOUND`。成功時 `data` 含 `sn`、`amount`、`balance`、`created_at`。
 
 ## POST `/transfer/list`
 
-每商戶每分鐘最多 10 次。
+速率限制：每商戶每分鐘 10 次。
 
-| 欄位 | 必填 | 規則 |
+| 欄位 | 必填 | 約束 |
 |---|---|---|
 | `page` | 是 | ≥ 1 |
 | `perpage` | 是 | 1–100 |
 | `start_at` | 是 | Unix 秒 |
-| `end_at` | 是 | 必須 **大於** `start_at` |
-| `acc` | 否 | 篩選單一玩家 |
+| `end_at` | 是 | 須大於 `start_at` |
+| `acc` | 否 | 篩選玩家 |
 
-成功 `data`：`list`、`row_count`、`page_count`。
+回應 `data`：`list`、`row_count`、`page_count`。

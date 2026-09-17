@@ -3,13 +3,15 @@ title: Granted spins
 description: Grant, cancel, list.
 ---
 
-Free rounds on a game: **no player debit**, no JP. Seamless `/player/win` may still fire for wins (payout only). Credit on that `sn`; do not reject because there was no bet.
+Issues free rounds on a given game. Rounds do not debit the player and do not accrue JP.
 
-`bet_amount` is nominal and must be **> 0** and inside that player’s min/max (`BET_AMOUNT_RANGE`).
+On seamless wallets, `/player/win` may still be invoked for wins (payout only). The merchant credits by `sn`.
+
+`bet_amount` is the nominal stake. It must be > 0 and within that player’s min/max for the game (`BET_AMOUNT_RANGE`).
 
 ## POST `/free_round/add`
 
-`sn` is idempotent. Repeats return `existed: true`.
+`sn` is idempotent. Repeats return `existed: true` without a second grant.
 
 ```json
 {
@@ -22,23 +24,43 @@ Free rounds on a game: **no player debit**, no JP. Seamless `/player/win` may st
 }
 ```
 
-| Field | Required | Rules |
+| Field | Required | Constraints |
 |---|---|---|
-| `sn` | yes | max 80 |
+| `sn` | yes | ≤ 80 |
 | `acc` | yes | no prefix |
-| `game_code` | yes | |
+| `game_code` | yes | valid game |
 | `bet_amount` | yes | > 0 |
 | `count` | yes | 1–100 |
 | `expire_at` | yes | Unix seconds; `0` = default TTL |
 
-`FREE_ROUND_CAP`: monthly nominal cap (count × stake). Do not retry the same batch.
+```json
+{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
+```
 
-The platform consumes remaining rounds automatically. Game UI (remaining count, locked stake) needs the game client.
+| code | Definition |
+|---|---|
+| `FREE_ROUND_CAP` | Monthly nominal cap (count × stake) exceeded |
+| `BET_AMOUNT_RANGE` | Stake outside min/max |
+| `ACC_NOT_FOUND` | Player missing |
+| `GAME_NOT_FOUND` | Invalid game |
+
+Remaining rounds are decremented by the platform on each spin.
 
 ## POST `/free_round/cancel`
 
-`{ "sn": "FR-20260917-001" }`. Remaining goes to 0. Spins already used stay in history.
+```json
+{ "sn": "FR-20260917-001" }
+```
+
+Remaining rounds become zero. Consumed rounds remain in bet history. Unknown campaign: `ACC_NOT_FOUND`.
 
 ## POST `/free_round/list`
 
-`page` ≥ 1, `perpage` 1–100. Fields: `sn`, `game_code`, `bet_amount`, `total`, `remain`, `expire_at`, `created_at`.
+| Field | Required | Constraints |
+|---|---|---|
+| `page` | yes | ≥ 1 |
+| `perpage` | yes | 1–100 |
+| `acc` | no | |
+| `start_at` / `end_at` | no | Unix seconds |
+
+List fields: `sn`, `game_code`, `bet_amount`, `total`, `remain`, `expire_at`, `created_at`.

@@ -1,54 +1,44 @@
 ---
 title: 單錢包
-description: 平台呼叫你。Timeout 15 秒。
+description: 平台對商戶之回呼。Timeout 15 秒。
 ---
 
-這頁是給**單錢包商戶實作伺服器**用的。轉帳錢包可以跳過。
-
-平台會對你的 base URL 發 POST。body：
+適用於單錢包。平台對商戶 base URL 發出 `POST`，本文為：
 
 ```json
 { "data": "<AES-GCM hex>" }
 ```
 
-用與商戶 API **同一把** ApiKey 解密。明文是 JSON。
+解密金鑰與商戶 API 之 ApiKey 相同。排列見 [傳輸協議](/protocol)。
 
 <Warning>
-成功必須回 HTTP 200，且 JSON 的 `code` 為字串 `"OK"`。回 `"200"`、數字 `200`、`"success"` 都會被當成失敗，玩家會少錢或派不到彩。
+成功條件：HTTP 200，且 JSON `code` 為字串 `"OK"`。`"200"`、數值 `200` 或其他字串均視為失敗。
 </Warning>
 
-## 你必須實作的四支
+## 接口
 
-| 路徑 | 何時呼叫 | 你要做的事 |
+| 路徑 | 時機 | 語意 |
 |---|---|---|
-| `/player/balance` | 進遊戲、刷新餘額 | 回目前餘額 |
-| `/player/bet` | 玩家下注 | **扣款**，用 `sn` 去重 |
-| `/player/win` | 結算 | **加款**，用 `sn` 去重 |
-| `/player/bet_refund` | 扣款後注單無法成立 | **退回該筆 bet 的金額**，用 `sn` 去重 |
+| `/player/balance` | 進入遊戲、重新整理 | 回傳餘額 |
+| `/player/bet` | 下注 | 扣款 |
+| `/player/win` | 結算 | 加款 |
+| `/player/bet_refund` | 注單無法成立 | 退回對應 bet 金額 |
 
-Timeout **15 秒**。逾時我們**不會立刻重送同一包**；若扣款結果不明，後續可能打 `bet_refund`。請把每支接口做成 **15 秒內一定有 HTTP 回應**。
+逾時為 **15 秒**。逾時後平台不立即重送同一封包；扣款結果未決時可能續發 `bet_refund`。商戶須在時限內完成 HTTP 回應。
 
-## 去重（不做會雙扣）
+玩家離線後仍可能收到 `/player/win`。不得以離線為由拒絕。
 
-所有動錢請求都有 `sn`。請用資料庫唯一鍵鎖住：
+## 冪等
 
-1. 沒看過這個 `sn` → 執行扣／加，記下結果，回 `OK`
-2. 看過且上次成功 → **回同一結果**，不要再改餘額
-3. 看過且上次明確拒絕（例如餘額不足）→ 回同一個錯誤 `code`
+動錢請求皆含 `sn`。商戶須以 `sn` 為唯一鍵：
 
-```
-進遊戲 → balance
-   ↓
-下注 → bet（扣）
-   ↓
-遊戲結果 → win（加；金額可以是 0）
-```
-
-玩家關分頁後仍可能收到 `win`，**不要因為玩家離線就拒絕**。
+| 狀態 | 行為 |
+|---|---|
+| 未見該 `sn` | 執行扣／加並持久化結果，回應 `OK` |
+| 已成功處理 | 回傳首次結果，餘額不變 |
+| 已明確拒絕 | 回傳首次錯誤 `code` |
 
 ## POST `{base}/player/balance`
-
-解密後：
 
 ```json
 {
@@ -60,10 +50,8 @@ Timeout **15 秒**。逾時我們**不會立刻重送同一包**；若扣款結�
 
 | 欄位 | 說明 |
 |---|---|
-| `acc` | 完整帳號（含代理前綴） |
-| `player_acc` | 去掉前綴 |
-
-請用其中一個對到你的會員。成功：
+| `acc` | 含代理前綴 |
+| `player_acc` | 不含前綴 |
 
 ```json
 { "code": "OK", "data": { "balance": 1680.4 } }
@@ -83,9 +71,7 @@ Timeout **15 秒**。逾時我們**不會立刻重送同一包**；若扣款結�
 }
 ```
 
-這裡的 `acc` 是**去前綴**的玩家帳號。`amount` 為要扣除的正數。
-
-成功：
+`acc` 不含前綴。`amount` 為扣除額（正數）。
 
 ```json
 {
@@ -94,36 +80,20 @@ Timeout **15 秒**。逾時我們**不會立刻重送同一包**；若扣款結�
 }
 ```
 
-餘額不足：HTTP 200、`code` 例如 `BALANCE_INSUFFICIENT`（不要用 HTTP 4xx）。
+餘額不足：HTTP 200，`code` 為 `BALANCE_INSUFFICIENT`。
 
 ## POST `{base}/player/win`
 
-這是**加錢**，不是扣款。
+加款。錦標賽派彩之 `game_code` 為 `TOURNAMENT`。
 
-```json
-{
-  "timestamp": 1758723906,
-  "sn": "SGP2504300009402",
-  "game_code": "MLCQ",
-  "acc": "jordan",
-  "name": "Amy",
-  "amount": 150,
-  "beted_at": 1758723906,
-  "settled_at": 1758723910
-}
-```
+| 欄位 | 說明 |
+|---|---|
+| `sn` | 冪等鍵 |
+| `amount` | 增加額（正數） |
+| `beted_at` / `settled_at` | Unix 秒 |
 
-錦標賽派彩時 `game_code` 為 `TOURNAMENT`。成功 `data`：`original_balance`（加前）、`balance`（加後）。
+回應 `data`：`original_balance`（加款前）、`balance`（加款後）。
 
 ## POST `{base}/player/bet_refund`
 
-欄位：`sn`、`game_code`、`acc`、`name`、`amount`、`timestamp`。把該 `sn` 對應的下注金額退回。已退過請回 `OK`，餘額不變。
-
-## 自測清單
-
-- [ ] 用錯誤 ApiKey 解密會失敗，不會誤入帳
-- [ ] 同一 `sn` 的 bet 連打兩次，餘額只扣一次
-- [ ] 同一 `sn` 的 win 連打兩次，餘額只加一次
-- [ ] 回 `"code":"OK"` 而不是 `"200"`
-- [ ] 15 秒內一定回應
-- [ ] 玩家離線仍接受 win
+欄位：`sn`、`game_code`、`acc`、`name`、`amount`、`timestamp`。退回對應下注。若該 `sn` 已退款，回應 `OK` 且餘額不變。

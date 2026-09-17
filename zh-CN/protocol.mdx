@@ -1,41 +1,57 @@
 ---
 title: 传输协议
-description: 加密、信封、HTTP 与 code。
+description: 封套、AES-256-GCM、HTTP 与 code。
 ---
 
-所有商户 API：`POST`、`Content-Type: application/json`、UTF-8。路径接在 base 后，例如 `https://api.at-dev.app/api/v1/player/add`。
+## 请求
 
-## 外层（不加密）
+| 项目 | 规定 |
+|---|---|
+| 方法 | `POST` |
+| 标头 | `Content-Type: application/json` |
+| 编码 | UTF-8 |
+| URL | `{base}{path}` |
+
+### 外层
 
 ```json
-{ "agent_acc": "kiwi01", "data": "<内层加密后的 hex>" }
+{ "agent_acc": "kiwi01", "data": "<ciphertext hex>" }
 ```
 
-`agent_acc` 英数最长 60。`data` 只含 hex。我们用 `agent_acc` 选 ApiKey。
+| 字段 | 必填 | 类型 | 约束 |
+|---|---|---|---|
+| `agent_acc` | 是 | string | 英数，长度 ≤ 60 |
+| `data` | 是 | string | 内层明文加密后之十六进制 |
 
-## 内层（要加密）
+### 内层
+
+UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。
 
 ```json
 {"acc":"jordan","name":"Amy"}
 ```
 
-字段名 snake_case。这个 JSON 的 UTF-8 bytes 才是明文。
-
 ## AES-256-GCM
 
-ApiKey：64 hex → 32 bytes。nonce：**12 bytes，每次请求必须重新随机**。tag：16 bytes。输出顺序：`nonce ‖ ciphertext ‖ tag`，再转 hex。
+| 参数 | 值 |
+|---|---|
+| 算法 | AES-256-GCM |
+| 密钥 | ApiKey 十六进制解码，32 bytes |
+| nonce | 12 bytes，每个请求独立随机，禁止重用 |
+| tag | 16 bytes |
+| 密文排列 | `nonce ‖ ciphertext ‖ tag`，再编码为 hex |
 
-正式环境禁止重用 nonce。下面测试向量只用固定 nonce 核对实现，**不要当正式密钥**。
+单钱包回呼使用同一密钥与同一排列。
 
-<Accordion title="测试向量">
-明文必须一字不差：`{"acc":"jordan","name":"Amy"}`
+### 参考向量
+
+仅供实现核对，不得作为正式密钥。明文为 `{"acc":"jordan","name":"Amy"}`（无空白、无换行）。
 
 | | hex |
 |---|---|
 | key | `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` |
 | nonce | `000102030405060708090a0b` |
-| 应得到的 data | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
-</Accordion>
+| data | `000102030405060708090a0b3c20b778a6c7f839e72ee5efd0875a41a1b8e6599559655e790a9ca760a850743566fe60e4ecf7193d174ad5dd` |
 
 <CodeGroup>
 ```javascript Node.js
@@ -52,7 +68,7 @@ function encrypt(plain, keyHex) {
 ```python Python
 import os, binascii
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-def encrypt(plain, key_hex):
+def encrypt(plain: str, key_hex: str) -> str:
     key = binascii.unhexlify(key_hex)
     nonce = os.urandom(12)
     ct = AESGCM(key).encrypt(nonce, plain.encode("utf-8"), None)
@@ -60,23 +76,34 @@ def encrypt(plain, key_hex):
 ```
 </CodeGroup>
 
-先解析 JSON 再看 `code`。不要 `if (!response.ok) throw` 就结束。
-
-## 信封
+## 响应
 
 ```json
-{ "api_version": "v1", "message": "", "code": "OK", "data": {}, "trace_id": "uuid" }
+{
+  "api_version": "v1",
+  "message": "",
+  "code": "OK",
+  "data": {},
+  "trace_id": "3f2c1a0b-...."
+}
 ```
 
-成功只有 `OK`。`data` 是对象或数组。报障请带 `trace_id`。
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `code` | string | 成功值仅为 `OK` |
+| `data` | object \| array \| null | 非字符串 |
+| `trace_id` | string | 日志关联标识 |
 
-| HTTP | 你该做 |
+客户端须先解析 JSON，再读取 `code`。
+
+## HTTP 状态
+
+| 状态 | 语义 |
 |---|---|
-| 200 且 `code=OK` | 成功 |
-| 200 且 `code≠OK` | 失败，见 [错误码](/zh-CN/errors) |
-| 404 | 路径写错 |
-| 500 | **结果不明**。转账 `/transfer/check` |
+| 200 | 请求已处理。成功与否以 `code` 为准 |
+| 404 | 路径不存在 |
+| 500 | 结果未决。body 未必为 JSON |
 
-找不到代理、IP 不在白名单、解密失败、参数不合法：现为 **HTTP 200 + 对应 code**。
+代理不存在、来源 IP 未授权、解密失败、参数不合法等，响应 **HTTP 200** 且 `code` 为对应错误值。
 
-单钱包方向相反：我们 POST `{ "data": "<hex>" }`，你回明文 JSON，成功必须 `"OK"`。
+HTTP 500：转账须以同一 `sn` 调用 `/transfer/check`；单钱包须以商户账本及 `/bet_rec/query` 核对，不得径行冲正。

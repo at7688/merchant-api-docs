@@ -3,13 +3,15 @@ title: 赠送旋转
 description: 发放、取消、查询。
 ---
 
-指定玩家在指定游戏免费转 N 次。**不扣玩家余额**、不累积 JP。单钱包赢分时我们仍可能打你的 `/player/win`（只有派彩）。
+向指定玩家发放指定游戏之免费旋转。该等旋转不扣除玩家余额、不计入 JP。
 
-`bet_amount` 必须 **> 0**，且在该玩家该游戏单注上下限内。
+单钱包结算时，平台仍可能对商户发出 `/player/win`（仅派彩、无对应 bet）。商户须依 `sn` 加款。
+
+`bet_amount` 为名目注额，须大于 0，且位于该玩家该游戏单注上下限内，否则 `BET_AMOUNT_RANGE`。
 
 ## POST `/free_round/add`
 
-同一 `sn` 重送不会再送一次（`existed: true`）。
+`sn` 为幂等键。重复提交返回 `existed: true`，不重复发放。
 
 ```json
 {
@@ -22,14 +24,43 @@ description: 发放、取消、查询。
 }
 ```
 
-`count` 1–100。`expire_at` 为 Unix 秒，`0`＝系统默认有效期。超额回 `FREE_ROUND_CAP`，不要重试同一批。
+| 字段 | 必填 | 约束 |
+|---|---|---|
+| `sn` | 是 | 长度 ≤ 80 |
+| `acc` | 是 | 不含前缀 |
+| `game_code` | 是 | 有效游戏代码 |
+| `bet_amount` | 是 | > 0 |
+| `count` | 是 | 1–100 |
+| `expire_at` | 是 | Unix 秒；`0` 表示系统默认有效期 |
 
-平台会在玩家旋转时自动消耗次数。
+```json
+{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
+```
+
+| code | 定义 |
+|---|---|
+| `FREE_ROUND_CAP` | 当月名目总额（次数 × 注额）超过上限 |
+| `BET_AMOUNT_RANGE` | 注额超出上下限 |
+| `ACC_NOT_FOUND` | 玩家不存在 |
+| `GAME_NOT_FOUND` | 游戏代码无效 |
+
+剩余次数由平台于旋转时扣减。
 
 ## POST `/free_round/cancel`
 
-`{ "sn": "FR-20260917-001" }`。剩余次数归零。已用掉的转不会从历史删除。
+```json
+{ "sn": "FR-20260917-001" }
+```
+
+剩余次数归零。已消耗次数仍保留于注单历史。无此活动时 `ACC_NOT_FOUND`。
 
 ## POST `/free_round/list`
 
-`page` ≥ 1，`perpage` 1–100。字段：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
+| 字段 | 必填 | 约束 |
+|---|---|---|
+| `page` | 是 | ≥ 1 |
+| `perpage` | 是 | 1–100 |
+| `acc` | 否 | |
+| `start_at` / `end_at` | 否 | Unix 秒 |
+
+`list` 元素：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。

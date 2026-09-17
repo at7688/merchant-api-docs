@@ -1,45 +1,71 @@
 ---
 title: 玩家
-description: 建帐、余额、登录、登出。
+description: 建立、余额、登录、登出。
 ---
 
-`acc` **只送玩家账号**，不要加代理前缀。
+内层 `acc` 不含代理前缀。时间字段为 Unix 秒。
 
 ## POST `/player/add`
 
-已存在回 `ACC_EXIST`——可以当成功，接着去登录。
+| 字段 | 必填 | 类型 | 约束 |
+|---|---|---|---|
+| `acc` | 是 | string | 英数，6–60，存储为小写 |
+| `name` | 是 | string | 长度 ≤ 30 |
 
 ```json
 { "acc": "jordan", "name": "Amy" }
 ```
 
-`acc` 英数 6–60；`name` 最长 30。成功：
-
 ```json
-{ "code": "OK", "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 } }
+{
+  "code": "OK",
+  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }
+}
 ```
 
-之后请求仍送 `jordan`。
+后续请求仍传送 `jordan`。`ACC_EXIST` 表示账号已存在。
 
 ## POST `/player/balance`
 
-**只有转账钱包**。`{ "acc": "jordan" }`。成功 `data`：`currency`、`balance`。
+查询平台余额。适用于转账钱包。
+
+| 字段 | 必填 | 类型 | 约束 |
+|---|---|---|---|
+| `acc` | 是 | string | 英数，6–60 |
+
+响应 `data`：`currency`、`balance`。
 
 ## POST `/player/login`
 
-请用玩家的**真实 IP**。
+核发大厅或游戏 URL。`ip` 为玩家地址。
 
-| 字段 | 必填 | 规则 |
-|---|---|---|
-| `acc` | 是 | 英数 6–60 |
-| `lang` | 是 | BCP 47，如 `zh-CN` |
-| `ip` | 是 | IPv4／IPv6 |
-| `device` | 是 | `DESKTOP` 或 `MOBILE` |
-| `game_code` | 否 | 空则进大厅 |
-| `return_url` | 否 | 合法 URL |
+| 字段 | 必填 | 类型 | 约束 |
+|---|---|---|---|
+| `acc` | 是 | string | 英数，6–60 |
+| `lang` | 是 | string | BCP 47，例如 `zh-CN` |
+| `ip` | 是 | string | IPv4 或 IPv6 |
+| `device` | 是 | string | `DESKTOP` \| `MOBILE` |
+| `game_code` | 否 | string | 省略则进入大厅 |
+| `return_url` | 否 | string | 合法 URL |
 
-成功 `data.url` 在玩家浏览器打开，不要改 query 里的 `token`。
+```json
+{
+  "acc": "jordan",
+  "lang": "zh-CN",
+  "ip": "203.0.113.10",
+  "device": "MOBILE",
+  "game_code": "MLCQ"
+}
+```
+
+```json
+{ "code": "OK", "data": { "url": "https://example/?token=..." } }
+```
+
+客户端开启 `data.url`，不得修改 `token`。
 
 ## POST `/player/logout`
 
-可省略 `acc`＝登出该商户下全部会员。请勿在排程里误送空值。
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `acc` | 否 | 省略时登出该商户全部会员 |

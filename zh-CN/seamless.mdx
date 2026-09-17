@@ -1,39 +1,85 @@
 ---
 title: 单钱包
-description: 平台调用你。Timeout 15 秒。
+description: 平台对商户之回呼。Timeout 15 秒。
 ---
 
-仅单钱包商户。我们 POST `{ "data": "<hex>" }`，用同一把 ApiKey 解密。
+适用于单钱包。平台对商户 base URL 发出 `POST`：
+
+```json
+{ "data": "<AES-GCM hex>" }
+```
+
+解密密钥与商户 API 之 ApiKey 相同。排列见 [传输协议](/zh-CN/protocol)。
 
 <Warning>
-成功必须 HTTP 200 且 `"code": "OK"`。回 `"200"` 会被当成失败。
+成功条件：HTTP 200，且 JSON `code` 为字符串 `"OK"`。`"200"`、数值 `200` 或其他字符串均视为失败。
 </Warning>
 
-必须实现：`/player/balance`（查余额）、`/player/bet`（**扣款**）、`/player/win`（**加款**）、`/player/bet_refund`（退该笔下注）。Timeout **15 秒**。
+## 接口
 
-## 去重
+| 路径 | 时机 | 语义 |
+|---|---|---|
+| `/player/balance` | 进入游戏、刷新 | 返回余额 |
+| `/player/bet` | 下注 | 扣款 |
+| `/player/win` | 结算 | 加款 |
+| `/player/bet_refund` | 注单无法成立 | 退回对应 bet 金额 |
 
-同一 `sn`：第一次执行并记账；第二次回第一次的结果，**不要再改余额**。玩家离线仍可能收到 `win`，不要拒绝。
+超时为 **15 秒**。超时后平台不立即重送同一封包；扣款结果未决时可能续发 `bet_refund`。商户须在时限内完成 HTTP 响应。
+
+玩家离线后仍可能收到 `/player/win`。不得以离线为由拒绝。
+
+## 幂等
+
+动钱请求皆含 `sn`。商户须以 `sn` 为唯一键：未见则执行并持久化；已成功则返回首次结果且余额不变；已拒绝则返回首次错误 `code`。
 
 ## POST `{base}/player/balance`
 
-`acc` 为完整账号（含前缀），`player_acc` 为去前缀。成功：`{ "code": "OK", "data": { "balance": 1680.4 } }`。
+```json
+{
+  "timestamp": 1758723906,
+  "acc": "kiwi01_jordan",
+  "player_acc": "jordan"
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `acc` | 含代理前缀 |
+| `player_acc` | 不含前缀 |
+
+```json
+{ "code": "OK", "data": { "balance": 1680.4 } }
+```
 
 ## POST `{base}/player/bet`
 
-这里的 `acc` **无前缀**。`amount` 为扣除正数。成功 `original_balance`（扣前）、`balance`（扣后）。余额不足：HTTP 200 + `BALANCE_INSUFFICIENT`。
+```json
+{
+  "timestamp": 1758723906,
+  "sn": "SGP2504300009402",
+  "game_code": "MLCQ",
+  "acc": "jordan",
+  "name": "Amy",
+  "amount": 100,
+  "beted_at": 1758723906
+}
+```
+
+`acc` 不含前缀。`amount` 为扣除额（正数）。
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 1000, "balance": 900 }
+}
+```
+
+余额不足：HTTP 200，`code` 为 `BALANCE_INSUFFICIENT`。
 
 ## POST `{base}/player/win`
 
-这是**加钱**。锦标赛 `game_code` 为 `TOURNAMENT`。
+加款。锦标赛派彩之 `game_code` 为 `TOURNAMENT`。响应 `data`：`original_balance`（加款前）、`balance`（加款后）。
 
 ## POST `{base}/player/bet_refund`
 
-把该 `sn` 对应下注退回。已退过回 `OK`，余额不变。
-
-## 自测
-
-- [ ] 同一 sn 的 bet 连打两次只扣一次
-- [ ] 回 `"OK"` 而不是 `"200"`
-- [ ] 15 秒内一定响应
-- [ ] 玩家离线仍接受 win
+字段：`sn`、`game_code`、`acc`、`name`、`amount`、`timestamp`。退回对应下注。若该 `sn` 已退款，响应 `OK` 且余额不变。

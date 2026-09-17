@@ -1,47 +1,39 @@
 ---
 title: Transfers
-description: Credit and debit. sn must be unique.
+description: Transfer-wallet credit and debit.
 ---
 
-**Transfer wallet only.** Treat `sn` like a bank reference: one business event, one `sn`. We use it so retries are not double-posted.
+Transfer wallet only. `sn` is the idempotency key: one business event maps to one `sn`.
 
-| | Rules |
+| Field | Constraints |
 |---|---|
 | `sn` | alphanum plus `_` `-`, 6–120 |
 | `acc` | player id, no prefix |
 | `amount` | ≠ 0. Positive = credit to platform; negative = debit from platform |
-| time | Unix **seconds** |
+| time | Unix seconds |
 
 ## POST `/transfer/add`
-
-Credit 100:
 
 ```json
 { "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
 ```
 
-Debit 50: `"amount": -50`.
+Debit example: `"amount": -50`.
 
-Success: `{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }` (`balance` after this transfer).
+```json
+{ "code": "OK", "data": { "currency": "TWD", "balance": 100 } }
+```
 
-<Steps>
-  <Step title="code = OK">
-    Posted. Never reuse this `sn`.
-  </Step>
-  <Step title="TRANSFER_SN_EXIST">
-    Already posted. `/transfer/check`. Do **not** create a new sn.
-  </Step>
-  <Step title="BALANCE_INSUFFICIENT">
-    Debit failed. New sn when the player has funds.
-  </Step>
-  <Step title="HTTP 500 / disconnect">
-    Unknown. `/transfer/check` with the **same** sn. Found → done. `TRANSFER_NOT_FOUND` → then a new sn is safe.
-  </Step>
-</Steps>
+`balance` is the platform balance after this transfer.
 
-<Warning>
-Do not immediately retry with a new `sn` after HTTP 500. That double-credits the player.
-</Warning>
+| code | Meaning | Handling |
+|---|---|---|
+| `OK` | Posted | Do not reuse `sn` |
+| `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
+| `BALANCE_INSUFFICIENT` | Debit exceeds balance | Not posted |
+| `ACC_NOT_FOUND` | Player missing | Not posted |
+
+HTTP 500 or a dropped connection is undetermined. `/transfer/check` with the **original** `sn`: a row means posted; `TRANSFER_NOT_FOUND` allows a new `sn`. Replacing `sn` immediately after 500 can double-post.
 
 ## POST `/transfer/check`
 
@@ -49,8 +41,18 @@ Do not immediately retry with a new `sn` after HTTP 500. That double-credits the
 { "sn": "T20260917-0001", "acc": "jordan" }
 ```
 
-Missing → `TRANSFER_NOT_FOUND`.
+Missing record: `TRANSFER_NOT_FOUND`.
 
 ## POST `/transfer/list`
 
-10 calls / merchant / minute. `page` ≥ 1, `perpage` 1–100, `start_at` / `end_at` required (`end_at` > `start_at`), `acc` optional.
+Rate: 10 calls per merchant per minute.
+
+| Field | Required | Constraints |
+|---|---|---|
+| `page` | yes | ≥ 1 |
+| `perpage` | yes | 1–100 |
+| `start_at` | yes | Unix seconds |
+| `end_at` | yes | greater than `start_at` |
+| `acc` | no | |
+
+`data`: `list`, `row_count`, `page_count`.

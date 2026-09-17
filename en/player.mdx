@@ -3,54 +3,54 @@ title: Players
 description: Create, balance, login, logout.
 ---
 
-Encrypt the inner JSON. Send `acc` **without** the agent prefix.
+Inner `acc` excludes the agent prefix. Timestamps are Unix seconds.
 
 ## POST `/player/add`
 
-Already exists → `ACC_EXIST` (treat as created).
+| Field | Required | Type | Constraints |
+|---|---|---|---|
+| `acc` | yes | string | alphanum, 6–60, stored lowercase |
+| `name` | yes | string | ≤ 30 |
 
 ```json
 { "acc": "jordan", "name": "Amy" }
 ```
 
-| Field | Required | Rules |
-|---|---|---|
-| `acc` | yes | alphanum 6–60, stored lowercase |
-| `name` | yes | max 30 |
-
-Success:
-
 ```json
 {
   "code": "OK",
-  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }
+  "data": {
+    "acc": "kiwi01_jordan",
+    "player_acc": "jordan",
+    "player_id": 123
+  }
 }
 ```
 
-Later calls still send `jordan`.
+Subsequent requests still send `jordan`. `ACC_EXIST` means the account already exists.
 
 ## POST `/player/balance`
 
-**Transfer wallet only.**
+Platform balance. Transfer wallet only.
 
-```json
-{ "acc": "jordan" }
-```
+| Field | Required | Type | Constraints |
+|---|---|---|---|
+| `acc` | yes | string | alphanum, 6–60 |
 
-Success `data`: `currency`, `balance`.
+`data`: `currency`, `balance`.
 
 ## POST `/player/login`
 
-Use the **player’s** IP, not your server IP.
+Issues a lobby or game URL. `ip` is the player address.
 
-| Field | Required | Rules |
-|---|---|---|
-| `acc` | yes | alphanum 6–60 |
-| `lang` | yes | BCP 47 (`zh-TW`, `en`, `vi`) |
-| `ip` | yes | IPv4/IPv6 |
-| `device` | yes | `DESKTOP` or `MOBILE` |
-| `game_code` | no | omit → lobby |
-| `return_url` | no | valid URL |
+| Field | Required | Type | Constraints |
+|---|---|---|---|
+| `acc` | yes | string | alphanum, 6–60 |
+| `lang` | yes | string | BCP 47 |
+| `ip` | yes | string | IPv4 or IPv6 |
+| `device` | yes | string | `DESKTOP` \| `MOBILE` |
+| `game_code` | no | string | omitted → lobby |
+| `return_url` | no | string | valid URL |
 
 ```json
 {
@@ -62,12 +62,26 @@ Use the **player’s** IP, not your server IP.
 }
 ```
 
-Success: `{ "code": "OK", "data": { "url": "https://...?token=..." } }`. Open `url` as-is.
+```json
+{ "code": "OK", "data": { "url": "https://example/?token=..." } }
+```
+
+The client opens `data.url` without altering `token`.
+
+| code | Condition |
+|---|---|
+| `ACC_NOT_FOUND` | Player missing |
+| `ACC_NOT_ACTIVE` | Inactive |
+| `ACC_SUSPEND` | Suspended |
+| `GAME_NOT_FOUND` | Invalid game |
+| `GAME_MAINTAIN` | Maintenance |
 
 ## POST `/player/logout`
+
+| Field | Required | Description |
+|---|---|---|
+| `acc` | no | Omitted: all members under the merchant |
 
 ```json
 { "acc": "jordan" }
 ```
-
-Omit `acc` to log out **all** members under the merchant — do not send empty from a cron by mistake.

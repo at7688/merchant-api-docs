@@ -1,28 +1,22 @@
 ---
 title: 玩家
-description: 建帳、餘額、登入、登出。
+description: 建立、餘額、登入、登出。
 ---
 
-以下「內層」都要加密後放進外層 `data`。`acc` **只送玩家帳號**，不要加 `kiwi01_`。
-
-時間、IP、語系寫錯最常變成 `PARAM_INVALID`。
+內層 `acc` 不含代理前綴。時間欄位為 Unix 秒。
 
 ## POST `/player/add`
 
-建立會員。已存在回 `ACC_EXIST`——可以當成功，接著去登入。
+建立會員。
 
-內層：
+| 欄位 | 必填 | 型別 | 約束 |
+|---|---|---|---|
+| `acc` | 是 | string | 英數，6–60，儲存為小寫 |
+| `name` | 是 | string | 長度 ≤ 30 |
 
 ```json
 { "acc": "jordan", "name": "Amy" }
 ```
-
-| 欄位 | 必填 | 規則 |
-|---|---|---|
-| `acc` | 是 | 英數，6–60，會被轉成小寫 |
-| `name` | 是 | 最長 30 |
-
-成功：
 
 ```json
 {
@@ -35,30 +29,30 @@ description: 建帳、餘額、登入、登出。
 }
 ```
 
-`data.acc` 是平台完整帳號，給你對帳用。之後請求仍送 `jordan`。
+後續請求仍傳送 `jordan`。`ACC_EXIST` 表示帳號已存在，可視為建立完成。
 
 ## POST `/player/balance`
 
-**只有轉帳錢包**用這支查平台餘額。單錢包請實作你自己的 `/player/balance` 給我們查。
+查詢平台餘額。適用於轉帳錢包。單錢包餘額由商戶接口提供。
 
-```json
-{ "acc": "jordan" }
-```
+| 欄位 | 必填 | 型別 | 約束 |
+|---|---|---|---|
+| `acc` | 是 | string | 英數，6–60 |
 
-成功 `data`：`currency`（如 `TWD`）、`balance`（數字）。
+回應 `data`：`currency`、`balance`。
 
 ## POST `/player/login`
 
-回傳可打開的大廳或遊戲 URL。請用玩家的**真實 IP**，不要填伺服器 IP。
+核發大廳或遊戲 URL。`ip` 為玩家位址。
 
-| 欄位 | 必填 | 規則 |
-|---|---|---|
-| `acc` | 是 | 英數 6–60 |
-| `lang` | 是 | BCP 47，例如 `zh-TW`、`en`、`vi` |
-| `ip` | 是 | IPv4 或 IPv6 |
-| `device` | 是 | 只能是 `DESKTOP` 或 `MOBILE`（全大寫） |
-| `game_code` | 否 | 有值進該遊戲；空或省略進大廳 |
-| `return_url` | 否 | 必須是合法 URL |
+| 欄位 | 必填 | 型別 | 約束 |
+|---|---|---|---|
+| `acc` | 是 | string | 英數，6–60 |
+| `lang` | 是 | string | BCP 47，例如 `zh-TW` |
+| `ip` | 是 | string | IPv4 或 IPv6 |
+| `device` | 是 | string | `DESKTOP` \| `MOBILE` |
+| `game_code` | 否 | string | 省略則進入大廳 |
+| `return_url` | 否 | string | 合法 URL |
 
 ```json
 {
@@ -70,25 +64,26 @@ description: 建帳、餘額、登入、登出。
 }
 ```
 
-成功：
-
 ```json
-{ "code": "OK", "data": { "url": "https://....?token=...&lang=zh-TW" } }
+{ "code": "OK", "data": { "url": "https://example/?token=...&lang=zh-TW" } }
 ```
 
-把 `url` 開在玩家瀏覽器或 WebView。`token` 已含在 query，不要再改。
+用戶端開啟 `data.url`，不得修改 `token`。
 
-| code | 處理 |
+| code | 條件 |
 |---|---|
-| `ACC_NOT_FOUND` | 先 add |
-| `ACC_NOT_ACTIVE` / `ACC_SUSPEND` | 不要進遊戲 |
-| `GAME_NOT_FOUND` | `/game/list` 核對代碼（大小寫我們會正規化，但仍須是有效遊戲） |
-| `GAME_MAINTAIN` | 提示維護 |
+| `ACC_NOT_FOUND` | 玩家不存在 |
+| `ACC_NOT_ACTIVE` | 玩家未啟用 |
+| `ACC_SUSPEND` | 玩家已暫停 |
+| `GAME_NOT_FOUND` | 遊戲代碼無效 |
+| `GAME_MAINTAIN` | 維護中 |
 
 ## POST `/player/logout`
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `acc` | 否 | 省略時登出該商戶全部會員 |
 
 ```json
 { "acc": "jordan" }
 ```
-
-省略 `acc`：登出該商戶底下**所有**會員。請勿在排程裡誤送空值。
