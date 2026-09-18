@@ -13,7 +13,7 @@ description: 单一钱包对接顺序。
 2. 实现商户 → 平台的加密，以及平台 → 商户回调的解密。密钥相同。
 3. `POST /player/add`、`POST /player/login`。`acc` 不含代理前缀。
 4. 实现回调：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。成功时 `code` 为 `OK`。超时 15 秒。
-5. 以 `sn` 为唯一键保证幂等。玩家掉线后仍须接受 `/player/win`。
+5. 以 `sn` 为唯一键保证幂等。同一 `sn` 的 win／refund 稍后可能再送。已成功则回首次结果。玩家掉线后仍须接受 `/player/win`。赠送旋转不发 bet、仍可能 win。
 6. 对账：`/bet_rec/query`。`status` 为 `UNKNOWN` 时不得自动退款。
 
 后续接口：[玩家](/zh-CN/player)、[回调](/zh-CN/callback)、[记录](/zh-CN/records)、[免费旋转](/zh-CN/free-round)。

@@ -13,7 +13,7 @@ description: 單錢包對接順序。
 2. 實作商戶 → 平台之加密，以及平台 → 商戶回調之解密。金鑰相同。
 3. `POST /player/add`、`POST /player/login`。`acc` 不含代理前綴。
 4. 實作回調：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。成功時 `code` 為 `OK`。逾時 15 秒。
-5. 以 `sn` 為唯一鍵保證冪等。玩家離線後仍須接受 `/player/win`。
+5. 以 `sn` 為唯一鍵保證冪等。同一 `sn` 的 win／refund **稍後可能再送**（結算重試、值班補送、卡住注退款）。已成功則回首次結果。玩家離線後仍須接受 `/player/win`。贈送旋轉不發 bet、仍可能 win。
 6. 對帳：`/bet_rec/query`。`status` 為 `UNKNOWN` 時不得自動退款。
 
 後續接口：[玩家](/player)、[回調](/callback)、[紀錄](/records)、[贈送旋轉](/free-round)。

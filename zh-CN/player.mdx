@@ -66,7 +66,9 @@ description: 创建、余额、登录、登出。
 <Card title="响应" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `url` | string | 大厅或游戏完整 URL，已含 `token`。客户端直接打开，不得修改 `token` |
+| `url` | string | 大厅或游戏完整 URL。客户端直接打开，不得修改 `token` |
+
+查库时 `game_code` 转大写。返回路径为**小写**：有值时 `{GameURL}/{game_code}?token=&lang=&return_url=`；省略时 `{LobbyURL}?token=&lang=&return_url=`。`return_url` 经 query escape。无效代码为 `GAME_NOT_FOUND`；维护中为 `GAME_MAINTAIN`。
 </Card>
 
 ## POST `/player/logout`

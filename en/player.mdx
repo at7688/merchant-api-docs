@@ -70,7 +70,9 @@ Transfer wallet only.
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `url` | string | Lobby or game URL including `token`. Open as-is |
+| `url` | string | Lobby or game URL. Open as-is; do not alter `token` |
+
+Lookup uppercases `game_code`. The path in `url` is **lowercase**: with a code, `{GameURL}/{game_code}?token=&lang=&return_url=`; omitted, `{LobbyURL}?token=&lang=&return_url=`. `return_url` is query-escaped. Unknown code: `GAME_NOT_FOUND`. Maintenance: `GAME_MAINTAIN`.
 </Card>
 
 ## POST `/player/logout`

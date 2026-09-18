@@ -9,7 +9,7 @@ description: 平台对商户的回调。超时 15 秒。
 成功时 `code` 为 `OK`。
 </Warning>
 
-超时 15 秒。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
+超时 15 秒。当时不立即重发同一封包。之后仍可能对**同一 `sn`** 再发 `/player/win` 或 `/player/refund`（结算重试、值班补送、卡住注退款）。赠送旋转消耗时不发 `/player/bet`，结算仍可能 `/player/win`（`amount` 可为 0）。`bet`／`win`／`refund` 的 `acc` 不含前缀；仅 `balance` 同时给完整 `acc` 与 `player_acc`。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
 
 ## POST `{base}/player/balance`
 

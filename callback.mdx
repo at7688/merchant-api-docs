@@ -17,9 +17,17 @@ description: 平台對商戶之回調。Timeout 15 秒。
 成功時 `code` 為 `OK`。
 </Warning>
 
-逾時 **15 秒**。不立即重送同一封包；扣款結果未決時可能續發 `/player/refund`。玩家離線後仍可能收到 `/player/win`。
+逾時 **15 秒**。逾時當下不立即重送同一封包。之後仍可能對**同一 `sn`** 再發：
 
-動錢請求以 `sn` 為唯一鍵：未見則執行並持久化；已成功則回傳首次結果且餘額不變；已拒絕則回傳首次錯誤 `code`。
+| 情況 | 後續回調 |
+|---|---|
+| `/player/bet` 結果未決 | `/player/refund`（自動或值班補送） |
+| `/player/win` 未成功 | 稍後再發 `/player/win`（遊戲重送或值班補送） |
+| 注單卡住逾時後取消 | `/player/refund` |
+
+玩家離線後仍可能收到 `/player/win`。贈送旋轉消耗時**不發** `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。
+
+動錢請求以 `sn` 為唯一鍵：未見則執行並持久化；已成功則回傳首次結果且餘額不變；已拒絕則回傳首次錯誤 `code`。`bet`／`win`／`refund` 之 `acc` 為**不含前綴**；僅 `balance` 回調同時給完整 `acc` 與 `player_acc`。
 
 ## POST `{base}/player/balance`
 

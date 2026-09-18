@@ -56,6 +56,8 @@ Active games only (`is_active=true`). Maintenance games still appear; login retu
 | `slot_bet_detail` | object | Game-specific |
 </Card>
 
+Granted-spin rounds still appear; `bet_amount` is the nominal stake. This endpoint does not flag grants.
+
 ## POST `/bet_rec/detail`
 
 Request: `sn`, `lang` (BCP 47). Response `data.url`: result-page URL.

@@ -9,7 +9,7 @@ Seamless wallet only. Platform `POST`s to `{MerchantApiUrl}{path}` (e.g. `https:
 Success: `code` is `OK`.
 </Warning>
 
-Timeout 15 seconds. Idempotency on `sn`. `/player/win` may arrive after disconnect.
+Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`** may later receive another `/player/win` or `/player/refund` (settle retry, operator resend, stuck-bet refund). Granted-spin consumption does **not** send `/player/bet`; settle may still send `/player/win` (`amount` may be 0). `acc` on bet/win/refund is unprefixed; only the balance callback sends both prefixed `acc` and `player_acc`. Idempotency on `sn`. `/player/win` may arrive after disconnect.
 
 ## POST `{base}/player/balance`
 

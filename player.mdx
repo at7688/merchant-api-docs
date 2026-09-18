@@ -100,7 +100,16 @@ description: 建立、餘額、登入、登出。
 <Card title="回應" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `url` | string | 大廳或遊戲完整 URL，已含 `token`、`lang`。用戶端直接開啟，不得修改 `token` |
+| `url` | string | 大廳或遊戲完整 URL。用戶端直接開啟，不得修改 `token` |
+
+查庫時 `game_code` 轉大寫。回傳路徑為**小寫**：
+
+| `game_code` | `url` 形狀 |
+|---|---|
+| 有值 | `{GameURL}/{game_code}?token=…&lang=…&return_url=…` |
+| 省略或空 | `{LobbyURL}?token=…&lang=…&return_url=…` |
+
+`return_url` 經 query escape 後放入。`game_code` 無效為 `GAME_NOT_FOUND`；遊戲或類別維護中為 `GAME_MAINTAIN`（清單仍可能列出維護中遊戲）。
 
 ```json
 {

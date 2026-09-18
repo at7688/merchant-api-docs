@@ -13,7 +13,7 @@ Free rounds: no player debit, no JP. A win callback may still fire. Envelope: [P
 | Monthly cap | Nominal `bet_amount × count`, calendar month in **UTC+8** (`Asia/Shanghai`). Unset cap = unlimited |
 | Stake | If a game is set, must lie within that player’s `bet_min` / `bet_max` |
 
-Consumption order: oldest grant first (`id` ascending).
+Consumption order: oldest grant first (`id` ascending). The platform decrements one round when the player bets that game. Transfer wallet: no platform debit, no JP. Seamless: no `/player/bet`; settle may still `/player/win`. Buy-free is rejected while rounds remain. Bet list still includes the round at nominal `bet_amount` with no grant flag. Remain lives on the platform; this API does not push remain to the merchant.
 
 ## POST `/free_round/add`
 

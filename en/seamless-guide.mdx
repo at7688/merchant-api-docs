@@ -13,7 +13,7 @@ Shared spec: [Protocol](/en/protocol), [Error codes](/en/errors). Callback spec:
 2. Implement encrypt (merchant → platform) and decrypt (callbacks). Same key.
 3. `POST /player/add`, `POST /player/login`. `acc` excludes the agent prefix.
 4. Implement `/player/balance`, `/player/bet`, `/player/win`, `/player/refund`. Success: `code` is `OK`. Timeout 15 seconds.
-5. Enforce idempotency on `sn`. Accept `/player/win` after disconnect.
+5. Enforce idempotency on `sn`. The same `sn` may receive a later win/refund. Return the first result if already processed. Accept `/player/win` after disconnect. Granted spins skip bet and may still win.
 6. Reconciliation: `/bet_rec/query`. `UNKNOWN` must not trigger an automatic refund.
 
 Next: [Players](/en/player), [Callbacks](/en/callback), [Records](/en/records), [Granted spins](/en/free-round).

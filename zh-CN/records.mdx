@@ -48,6 +48,8 @@ description: 注单、JP、报表、刮刮卡。
 | `agent` / `member` | object | 摘要 |
 | `slot_bet_detail` | object | 游戏端明细 |
 
+赠送旋转产生的注单仍在本列表，`bet_amount` 为名义注额。本接口不另给「是否赠送」字段。
+
 ## POST `/bet_rec/detail`
 
 请求：`sn`、`lang`。响应 `data.url`：牌面结果页 URL。
