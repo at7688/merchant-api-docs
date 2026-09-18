@@ -35,7 +35,7 @@ Retry may reuse the original parameters. Transfer `sn` must not be replaced for 
 | `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
 | `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, requery; then a new `sn` is allowed |
 | `GAME_NOT_FOUND` | Invalid game code | `/game/list` |
-| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet | Item-level `code`; envelope remains `OK`. Do not auto-refund |
+| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet | Item `code`; found items use `OK`. Envelope remains `OK`. Do not auto-refund |
 | `GAME_MAINTAIN` | Maintenance | Defer entry |
 | `BET_AMOUNT_RANGE` | Stake outside min/max | Adjust amount |
 | `FREE_ROUND_CAP` | Monthly grant cap exceeded | Do not resubmit the batch |
