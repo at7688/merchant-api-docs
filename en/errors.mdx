@@ -31,7 +31,6 @@ Retry may reuse the original parameters. Transfer `sn` must not be replaced for 
 | `ACC_NOT_FOUND` | Player does not exist | `/player/add`; no extra prefix |
 | `ACC_NOT_ACTIVE` | Player inactive | Deny game entry |
 | `ACC_SUSPEND` | Player suspended | Deny game entry |
-| `NAME_EXIST` | Duplicate name | Change `name` |
 | `BALANCE_INSUFFICIENT` | Insufficient balance | Transfer: credit first. Seamless bet: return this code |
 | `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
 | `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, requery; then a new `sn` is allowed |
@@ -39,6 +38,7 @@ Retry may reuse the original parameters. Transfer `sn` must not be replaced for 
 | `GAME_MAINTAIN` | Maintenance | Defer entry |
 | `BET_AMOUNT_RANGE` | Stake outside min/max | Adjust amount |
 | `FREE_ROUND_CAP` | Monthly grant cap exceeded | Do not resubmit the batch |
+| `WRONG_OPERATION` | Grant parameters cannot be applied | Check `sn`, count, stake |
 
 ## Undetermined outcome
 

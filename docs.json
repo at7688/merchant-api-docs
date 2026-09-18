@@ -41,7 +41,7 @@
           },
           {
             "group": "附錄",
-            "pages": ["errors"]
+            "pages": ["enums", "errors"]
           }
         ]
       },
@@ -74,7 +74,7 @@
           },
           {
             "group": "附录",
-            "pages": ["zh-CN/errors"]
+            "pages": ["zh-CN/enums", "zh-CN/errors"]
           }
         ]
       },
@@ -107,7 +107,7 @@
           },
           {
             "group": "Appendix",
-            "pages": ["en/errors"]
+            "pages": ["en/enums", "en/errors"]
           }
         ]
       }

@@ -31,7 +31,6 @@ description: 成功值僅為 OK。
 | `ACC_NOT_FOUND` | 玩家不存在 | 先呼叫 `/player/add`；確認未附加前綴 |
 | `ACC_NOT_ACTIVE` | 玩家未啟用 | 拒絕進入遊戲 |
 | `ACC_SUSPEND` | 玩家已暫停 | 拒絕進入遊戲 |
-| `NAME_EXIST` | 名稱重複 | 更換 `name` |
 | `BALANCE_INSUFFICIENT` | 餘額不足 | 轉帳：入金後再出金。單錢包 bet：以此 code 回應平台 |
 | `TRANSFER_SN_EXIST` | `sn` 已成功入帳 | 呼叫 `/transfer/check`。非失敗 |
 | `TRANSFER_NOT_FOUND` | 無此轉帳 | 若前次為 HTTP 500，間隔後再查詢；仍無則可使用新 `sn` |
@@ -39,6 +38,7 @@ description: 成功值僅為 OK。
 | `GAME_MAINTAIN` | 遊戲或類別維護中 | 延後進入 |
 | `BET_AMOUNT_RANGE` | 注額超出該玩家該遊戲上下限 | 調整金額 |
 | `FREE_ROUND_CAP` | 超過商戶當月贈送名目總額 | 不得重送同一批 |
+| `WRONG_OPERATION` | 參數無法發放贈送旋轉 | 核對 `sn`、次數、注額 |
 
 ## 結果未決
 

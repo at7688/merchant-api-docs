@@ -1,0 +1,207 @@
+---
+title: Enumerations
+description: Closed strings in merchant API requests, responses, and callbacks.
+---
+
+Closed strings that appear in merchant API **requests, responses, and callbacks**, taken from live code. Error codes: [Error codes](/en/errors).
+
+Game RPC and internal ops state (bet locks, resend queues) are out of scope. `game_code` (except callback `TOURNAMENT`) and `game_type_code` are not closed sets; use [`/game/list`](/en/records).
+
+## Language `lang`
+
+Request validation is BCP 47 (`bcp47_language_tag`). Passing validation does not mean the lobby or game has copy for that tag. `lang` is copied into the login URL and the result page.
+
+Built-in locale keys (`name` object keys on `/game/list`; scratch-card name resolution):
+
+| Code | Language |
+|---|---|
+| `zh-TW` | Traditional Chinese |
+| `zh-CN` | Simplified Chinese |
+| `en-US` | English |
+| `th-TH` | Thai |
+| `vi-VN` | Vietnamese |
+| `ja-JP` | Japanese |
+| `hi-IN` | Hindi |
+| `ko-KR` | Korean |
+| `ms-MY` | Malay |
+| `ne-NP` | Nepali |
+| `es-ES` | Spanish |
+
+| Endpoint | Behaviour |
+|---|---|
+| `/player/login` | Required; copied into the URL as `lang` |
+| `/bet_rec/detail`, `/jp_rec/detail` | Required; copied into the result page |
+| `/scratch_card_rec/list` | Optional; default `zh-TW`. Name resolution: requested tag → `zh-TW` → `en-US`, else empty |
+
+## Device `device`
+
+`/player/login` required; `oneof` these two values:
+
+| Value | Meaning |
+|---|---|
+| `DESKTOP` | Desktop |
+| `MOBILE` | Mobile |
+
+## Currency `currency`
+
+Copied from the merchant agent when the player is created; not a request field. Appears on `/player/balance`, `/transfer/*`, and `agent` / `member` profiles.
+
+| Code | Meaning |
+|---|---|
+| `TWD` | New Taiwan dollar |
+| `USD` | US dollar |
+| `CNY` | Chinese yuan |
+| `VND` | Vietnamese dong |
+| `IDR` | Indonesian rupiah |
+| `INR` | Indian rupee |
+
+## Game category `game_category_code`
+
+Appears on `/game/list`, bets, and JP. Platform-defined values below; **live games are those returned by `/game/list`**.
+
+| Code | Meaning |
+|---|---|
+| `SLOT` | Slots |
+| `FISH` | Fishing |
+| `LIVE` | Live casino |
+| `SPORT` | Sports |
+| `ESPORT` | Virtual sports |
+| `EGAME` | E-sports |
+| `CHESS` | Board / card |
+| `HUNDRED` | Hundred-player |
+| `STREET` | Arcade |
+| `ANIMAL` | Animal contest |
+| `LOTTERY` | Lottery |
+| `OTHERS` | Other |
+
+`game_type_code` is maintained in admin and has no fixed table; use `/game/list`.
+
+## Special `game_code`
+
+Login and list codes come from `/game/list` `code` (request uppercased; URL path lowercased).
+
+| Value | Where |
+|---|---|
+| `TOURNAMENT` | Seamless `/player/win` tournament payout. Not in `/game/list`; must not be used on `/player/login` |
+
+## Account type `player_type`
+
+`agent` / `member` profiles:
+
+| Value | Meaning |
+|---|---|
+| `AGENT` | Merchant agent |
+| `MEMBER` | Player |
+
+## Sub-role `sub_role`
+
+Same profile object. Members are typically empty.
+
+| Value | Meaning |
+|---|---|
+| (empty string) | No sub-role |
+| `ALL` | All |
+| `CS` | Customer service |
+| `FINANCE` | Finance |
+| `OPS` | Operations |
+
+## Account status
+
+Not a merchant API response field. Login maps to:
+
+| Condition | `code` |
+|---|---|
+| Inactive | `ACC_NOT_ACTIVE` |
+| Suspended | `ACC_SUSPEND` |
+
+Back-office values: `ACTIVE`, `SUSPEND`.
+
+## Bet `status`
+
+`/bet_rec/list`:
+
+| Value | Meaning |
+|---|---|
+| `PENDING` | Accepted, not settled (includes accepted before write) |
+| `PROCESSING` | In progress |
+| `FINISH` | Settled |
+| `CANCEL` | Cancelled |
+
+`/bet_rec/query` may also return `UNKNOWN` (not found). Do not auto-refund on `UNKNOWN`.
+
+## Scratch-card `status`
+
+`/scratch_card_rec/list` filter and row values:
+
+| Value | Meaning |
+|---|---|
+| `PENDING` | Unclaimed |
+| `CLAIMED` | Claimed, not scratched |
+| `SCRATCHED` | Scratched |
+
+Ticket `sn` is `SC_{id}`. `prize_level` is a localised name string, not a closed code.
+
+## Free-game `free_game_type`
+
+Bet rows:
+
+| Value | Meaning |
+|---|---|
+| `NONE` | No free game |
+| `TRIGGER` | Triggered in-round |
+| `PURCHASE` | Bought in |
+
+Merchant granted spins are not flagged in this field; see [Granted spins](/en/free-round).
+
+## JP type `jp_type`
+
+`/jp_rec/list`:
+
+| Value |
+|---|
+| `MINI` |
+| `MEGA` |
+| `GRAND` |
+
+## Report units
+
+`/bet_report/list`:
+
+| Field | Allowed |
+|---|---|
+| `report_unit` | `min`, `day` |
+| `time_unit` | `bet` (bet date), `settle` (settle date) |
+
+## Result page
+
+| Endpoint | Query |
+|---|---|
+| `/bet_rec/detail` | `sn`, `lang`, `is_jp=0` |
+| `/jp_rec/detail` | `sn`, `lang`, `is_jp=1` |
+
+## Seamless callback paths
+
+Platform `POST`s `{MerchantApiUrl}{path}`. The base must **not** end with `/`.
+
+| Path | Purpose |
+|---|---|
+| `/player/balance` | Balance |
+| `/player/bet` | Debit |
+| `/player/win` | Credit (`amount` ≥ 0, including no-win) |
+| `/player/refund` | Refund |
+
+## Callback response `code`
+
+Merchant JSON must include a top-level string `code`. HTTP status must be 2xx.
+
+| Value | Meaning |
+|---|---|
+| `OK` | Success. Idempotent retries still return `OK`; balance unchanged |
+| `BALANCE_INSUFFICIENT` | `/player/bet` only: insufficient funds. The platform forwards this code to the game |
+| Any other non-`OK` | Treated as rejection. Not success |
+
+See [Callbacks](/en/callback).
+
+## Transfer `sn` charset
+
+`/transfer/*` `sn`: alphanumeric plus `_` and `-`, length 6–120. Unique per merchant.

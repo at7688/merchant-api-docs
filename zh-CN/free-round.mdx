@@ -8,7 +8,7 @@ description: 发放、取消、查询。
 | 项目 | 规定 |
 |---|---|
 | `sn` | 全站唯一。已被使用则 `existed=true` 且不改本笔 |
-| `game_code` | 转大写。空字符串表示不限游戏 |
+| `game_code` | 转大写。空字符串表示不限游戏。非空时须为 `/game/list` 的 `code`；平台不因未知代码拒绝发放 |
 | `expire_at` | `0`＝自此刻起 30 日；超过 30 日的时间戳截成 30 日 |
 | 月额度 | 名义合计 `bet_amount × count`，日历月按 **UTC+8**（`Asia/Shanghai`）月初。后台未设上限则不检查 |
 | 注额 | 若指定游戏，须落在该玩家该游戏 `bet_min`／`bet_max` |
@@ -24,7 +24,7 @@ description: 发放、取消、查询。
 |---|---|---|---|
 | `sn` | 是 | string | 活动单号，≤ 80 |
 | `acc` | 是 | string | 玩家账号，不含前缀 |
-| `game_code` | 是 | string | 游戏代码 |
+| `game_code` | 否 | string | 游戏代码，转大写。空＝不限游戏 |
 | `bet_amount` | 是 | number | 名义注额，> 0 |
 | `count` | 是 | integer | 次数，1–100 |
 | `expire_at` | 是 | integer | 到期 Unix 秒；`0` 为系统默认 |
@@ -36,7 +36,7 @@ description: 发放、取消、查询。
 | `sn` | string | 活动单号 |
 | `existed` | boolean | `true` 表示该 `sn` 先前已发放 |
 
-错误码：`FREE_ROUND_CAP`、`BET_AMOUNT_RANGE`、`ACC_NOT_FOUND`、`GAME_NOT_FOUND`。
+错误码：`FREE_ROUND_CAP`、`BET_AMOUNT_RANGE`、`ACC_NOT_FOUND`、`WRONG_OPERATION`。
 </Card>
 
 ## POST `/free_round/cancel`

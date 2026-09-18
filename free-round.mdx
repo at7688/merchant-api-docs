@@ -8,7 +8,7 @@ description: 發放、取消、查詢。
 | 項目 | 規定 |
 |---|---|
 | `sn` | 全站唯一。他商戶已使用則 `existed=true` 且不改本筆 |
-| `game_code` | 轉大寫。空字串表示不限遊戲（消耗時任一遊戲皆可扣次數） |
+| `game_code` | 轉大寫。空字串表示不限遊戲（消耗時任一遊戲皆可扣次數）。非空時須為 `/game/list` 之 `code`；平台不因未知代碼拒絕發放 |
 | `expire_at` | `0` 或未指定＝自此刻起 30 日。超過 30 日之時間戳會被截成 30 日 |
 | 月額度 | 名目合計 `bet_amount × count`，日曆月以 **UTC+8**（`Asia/Shanghai`）月初起算。後台未設上限則不檢查 |
 | 注額 | 若指定遊戲，須落在該玩家該遊戲 `bet_min`／`bet_max` |
@@ -54,7 +54,6 @@ description: 發放、取消、查詢。
 | `FREE_ROUND_CAP` | 當月名目總額（次數 × 注額）超過上限 |
 | `BET_AMOUNT_RANGE` | 注額超出上下限 |
 | `ACC_NOT_FOUND` | 玩家不存在 |
-| `GAME_NOT_FOUND` | 遊戲代碼無效 |
 | `WRONG_OPERATION` | 參數無法發放（次數、注額、帳號） |
 </Card>
 
