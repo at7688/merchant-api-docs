@@ -68,7 +68,7 @@ Request: `sns` (1–100). Response `list[]`: `sn`, `status` ([bet status](/en/en
 
 ## POST `/bet_report/list`
 
-Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` ([report unit](/en/enums#report-unit)), `time_unit` ([time unit](/en/enums#time-unit)), optional `acc`.
+Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` ([aggregation period](/en/enums#report-unit)), `time_unit` ([time axis](/en/enums#time-unit)), optional `acc`.
 
 Response `list[]`: `datetime` (string), `bet_count`, `bet_member_count` (integer), `bet_amount`, `valid_amount`, `win_amount`, `result` (number). Plus `row_count`, `page_count`.
 
