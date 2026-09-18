@@ -48,7 +48,7 @@ Transfer wallet only.
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `currency` | string | e.g. `TWD` |
+| `currency` | string | [Currency](/en/enums#currency) |
 | `balance` | number | Platform balance |
 </Card>
 
@@ -60,9 +60,9 @@ Transfer wallet only.
 | Field | Required | Type | Description |
 |---|---|---|---|
 | `acc` | yes | string | Player id |
-| `lang` | yes | string | BCP 47 |
+| `lang` | yes | string | BCP 47. [Language](/en/enums#lang) |
 | `ip` | yes | string | Player IPv4/IPv6 |
-| `device` | yes | string | `DESKTOP` or `MOBILE` |
+| `device` | yes | string | [Device](/en/enums#device) |
 | `game_code` | no | string | Omitted → lobby |
 | `return_url` | no | string | Valid URL |
 </Card>

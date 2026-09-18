@@ -18,7 +18,7 @@ description: 转账钱包上分与下分。
 <Card title="响应" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `currency` | string | 币种 |
+| `currency` | string | [币种](/zh-CN/enums#currency) |
 | `balance` | number | 本笔完成后的平台余额 |
 
 | code | 说明 |
@@ -67,6 +67,6 @@ HTTP 500：以原 `sn` 调用 `/transfer/check`。
 | `id` | integer | 内部标识 |
 | `acc` | string | 完整账号 |
 | `name` | string | 显示名称 |
-| `player_type` | string | `AGENT` 或 `MEMBER` |
-| `currency` | string | 币种 |
-| `sub_role` | string | 子角色，可为空字符串 |
+| `player_type` | string | [账号类型](/zh-CN/enums#player-type) |
+| `currency` | string | [币种](/zh-CN/enums#currency) |
+| `sub_role` | string | [子角色](/zh-CN/enums#sub-role) |

@@ -52,14 +52,14 @@ Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`*
 
 ## POST `{base}/player/win`
 
-Credit. Tournaments: `game_code` `TOURNAMENT`.
+Credit. Tournament `game_code`: [`TOURNAMENT`](/en/enums#game-code).
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `timestamp` | integer | Unix seconds |
 | `sn` | string | Idempotency key |
-| `game_code` | string | Game or `TOURNAMENT` |
+| `game_code` | string | Game, or [tournament](/en/enums#game-code) |
 | `acc` | string | Unprefixed |
 | `name` | string | Display name |
 | `amount` | number | Credit, ≥ 0 (including no win) |

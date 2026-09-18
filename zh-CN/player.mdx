@@ -44,7 +44,7 @@ description: 创建、余额、登录、登出。
 <Card title="响应" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `currency` | string | 币种，例如 `TWD` |
+| `currency` | string | [币种](/zh-CN/enums#currency) |
 | `balance` | number | 平台余额 |
 </Card>
 
@@ -56,9 +56,9 @@ description: 创建、余额、登录、登出。
 | 字段 | 必填 | 类型 | 说明 |
 |---|---|---|---|
 | `acc` | 是 | string | 玩家账号 |
-| `lang` | 是 | string | BCP 47，例如 `zh-CN` |
+| `lang` | 是 | string | BCP 47。[语系](/zh-CN/enums#lang) |
 | `ip` | 是 | string | 玩家 IPv4 或 IPv6 |
-| `device` | 是 | string | `DESKTOP` 或 `MOBILE` |
+| `device` | 是 | string | [设备](/zh-CN/enums#device) |
 | `game_code` | 否 | string | 省略则进入大厅 |
 | `return_url` | 否 | string | 离开游戏后的返回 URL |
 </Card>

@@ -83,14 +83,14 @@ description: 平台對商戶之回調。Timeout 15 秒。
 
 ## POST `{base}/player/win`
 
-加款。錦標賽派彩之 `game_code` 為 `TOURNAMENT`。
+加款。錦標賽派彩之 `game_code` 見 [`TOURNAMENT`](/enums#game-code)。
 
 <Card title="請求（解密後）" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `timestamp` | integer | Unix 秒 |
 | `sn` | string | 冪等鍵 |
-| `game_code` | string | 遊戲代碼或 `TOURNAMENT` |
+| `game_code` | string | 遊戲代碼，或 [錦標賽](/enums#game-code) |
 | `acc` | string | 不含前綴 |
 | `name` | string | 顯示名稱 |
 | `amount` | number | 增加額，≥ 0（含未中獎） |

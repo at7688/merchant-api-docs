@@ -21,7 +21,7 @@ Rate 10 / merchant / minute: `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`
 ## POST `/game/list`
 
 <Card title="Response" icon="arrow-down-to-bracket">
-Active games only (`is_active=true`). Maintenance games still appear; login returns `GAME_MAINTAIN`. `data.list[]`: `id` (integer), `code` (string, login `game_code`), `name` (object, locale keys), `game_category_code`, `game_type_code` (string).
+Active games only (`is_active=true`). Maintenance games still appear; login returns `GAME_MAINTAIN`. `data.list[]`: `id` (integer), `code` (string, login `game_code`), `name` (object, keys: [language](/en/enums#lang)), [game category](/en/enums#game-category), `game_type_code` (string).
 </Card>
 
 ## POST `/bet_rec/list`
@@ -39,7 +39,7 @@ Active games only (`is_active=true`). Maintenance games still appear; login retu
 |---|---|---|
 | `sn` | string | Bet id |
 | `round_sn` | string | Round id |
-| `game_category_code` | string | Category |
+| `game_category_code` | string | [Game category](/en/enums#game-category) |
 | `game_type_code` | string | Type |
 | `game_code` | string | Game |
 | `acc` | string | Full account |
@@ -48,10 +48,10 @@ Active games only (`is_active=true`). Maintenance games still appear; login retu
 | `win_amount` | number | Payout |
 | `valid_amount` | number | Valid stake |
 | `result` | number | Payout − stake |
-| `free_game_type` | string | `NONE`, `TRIGGER`, `PURCHASE` |
+| `free_game_type` | string | [Free-game](/en/enums#free-game-type) |
 | `beted_at` | integer | Bet time |
 | `settled_at` | integer | Settlement time; 0 if unset |
-| `status` | string | `PENDING`, `PROCESSING`, `FINISH`, `CANCEL` |
+| `status` | string | [Bet status](/en/enums#bet-status) |
 | `agent` / `member` | object | Profiles |
 | `slot_bet_detail` | object | Game-specific |
 </Card>
@@ -60,21 +60,21 @@ Granted-spin rounds still appear; `bet_amount` is the nominal stake. This endpoi
 
 ## POST `/bet_rec/detail`
 
-Request: `sn`, `lang` (BCP 47). Response `data.url`: result-page URL.
+Request: `sn`, `lang` ([language](/en/enums#lang)). Response `data.url`: result-page URL.
 
 ## POST `/bet_rec/query`
 
-Request: `sns` (1–100). Response `list[]`: `sn`, `status` (`PENDING` including accepted-not-yet-written, `PROCESSING`, `FINISH`, `CANCEL`, or `UNKNOWN`). If the first six characters of `sn` are `YYMMDD` (UTC+8, `Asia/Shanghai`), they prune partitions. `UNKNOWN` must not trigger an automatic refund.
+Request: `sns` (1–100). Response `list[]`: `sn`, `status` ([bet status](/en/enums#bet-status)). If the first six characters of `sn` are `YYMMDD` (UTC+8, `Asia/Shanghai`), they prune partitions. `UNKNOWN` must not trigger an automatic refund.
 
 ## POST `/bet_report/list`
 
-Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` (`min`\|`day`), `time_unit` (`bet`\|`settle`), optional `acc`.
+Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` ([report unit](/en/enums#report-unit)), `time_unit` ([time unit](/en/enums#time-unit)), optional `acc`.
 
 Response `list[]`: `datetime` (string), `bet_count`, `bet_member_count` (integer), `bet_amount`, `valid_amount`, `win_amount`, `result` (number). Plus `row_count`, `page_count`.
 
 ## POST `/jp_rec/list`
 
-Request as bet list. `list[]`: `sn`, `game_category_code`, `game_type_code`, `game_code`, `jp_type`, `desk_id`, `acc`, `player_acc`, `bet_amount`, `amount` (JP payout), `beted_at`, `settled_at`, `agent`, `member`, `slot_bet_detail`.
+Request as bet list. `list[]`: `sn`, [game category](/en/enums#game-category), `game_type_code`, `game_code`, [JP type](/en/enums#jp-type), `desk_id`, `acc`, `player_acc`, `bet_amount`, `amount` (JP payout), `beted_at`, `settled_at`, `agent`, `member`, `slot_bet_detail`.
 
 ## POST `/jp_rec/detail`
 
@@ -82,7 +82,7 @@ Response `data.url` (JP result page, `is_jp=1`).
 
 ## POST `/scratch_card_rec/list`
 
-Request: `page`, `perpage`, `start_at`, `end_at`, optional `status` (`PENDING`\|`CLAIMED`\|`SCRATCHED`), `acc`, `lang`.
+Request: `page`, `perpage`, `start_at`, `end_at`, optional `status` ([scratch-card status](/en/enums#scratch-status)), `acc`, `lang` ([language](/en/enums#lang)).
 
 `list[]`: `sn` (`SC_{id}`), `activity_name`, `card_code`, `card_name`, `prize_level`, `prize_amount`, `status`, `player_acc`, `member` (object or null), `claimed_at`, `scratched_at`.
 

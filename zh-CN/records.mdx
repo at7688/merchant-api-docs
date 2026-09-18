@@ -20,7 +20,7 @@ description: 注单、JP、报表、刮刮卡。
 
 ## POST `/game/list`
 
-仅返回 `is_active=true` 的游戏。维护中游戏仍出现在清单，登录时才返回 `GAME_MAINTAIN`。响应 `list[]`：`id`（integer）、`code`（登录 `game_code`）、`name`（object，语种为键）、`game_category_code`、`game_type_code`。
+仅返回 `is_active=true` 的游戏。维护中游戏仍出现在清单，登录时才返回 `GAME_MAINTAIN`。响应 `list[]`：`id`（integer）、`code`（登录 `game_code`）、`name`（object，键为 [语系](/zh-CN/enums#lang)）、[游戏类别](/zh-CN/enums#game-category)、`game_type_code`。
 
 ## POST `/bet_rec/list`
 
@@ -32,7 +32,7 @@ description: 注单、JP、报表、刮刮卡。
 |---|---|---|
 | `sn` | string | 注单号 |
 | `round_sn` | string | 局号 |
-| `game_category_code` | string | 类别 |
+| `game_category_code` | string | [游戏类别](/zh-CN/enums#game-category) |
 | `game_type_code` | string | 类型 |
 | `game_code` | string | 游戏 |
 | `acc` | string | 完整账号 |
@@ -41,10 +41,10 @@ description: 注单、JP、报表、刮刮卡。
 | `win_amount` | number | 派奖额 |
 | `valid_amount` | number | 有效投注 |
 | `result` | number | 派奖 − 投注 |
-| `free_game_type` | string | `NONE`、`TRIGGER`、`PURCHASE` |
+| `free_game_type` | string | [免费游戏](/zh-CN/enums#free-game-type) |
 | `beted_at` | integer | 下注时间 |
 | `settled_at` | integer | 结算时间；未结算可为 0 |
-| `status` | string | `PENDING`、`PROCESSING`、`FINISH`、`CANCEL` |
+| `status` | string | [注单状态](/zh-CN/enums#bet-status) |
 | `agent` / `member` | object | 摘要 |
 | `slot_bet_detail` | object | 游戏端明细 |
 
@@ -52,21 +52,21 @@ description: 注单、JP、报表、刮刮卡。
 
 ## POST `/bet_rec/detail`
 
-请求：`sn`、`lang`。响应 `data.url`：牌面结果页 URL。
+请求：`sn`、`lang`（[语系](/zh-CN/enums#lang)）。响应 `data.url`：牌面结果页 URL。
 
 ## POST `/bet_rec/query`
 
-请求：`sns`（1–100）。响应 `list[]`：`sn`、`status`（含 `UNKNOWN`）。`UNKNOWN` 不得据此自动退款。
+请求：`sns`（1–100）。响应 `list[]`：`sn`、`status`（[注单状态](/zh-CN/enums#bet-status)）。`UNKNOWN` 不得据此自动退款。
 
 ## POST `/bet_report/list`
 
-请求：`report_unit`（`min`\|`day`）、`time_unit`（`bet`\|`settle`）。
+请求：`report_unit`（[报表单位](/zh-CN/enums#report-unit)）、`time_unit`（[时间单位](/zh-CN/enums#time-unit)）。
 
 响应 `list[]`：`datetime`、`bet_count`、`bet_member_count`、`bet_amount`、`valid_amount`、`win_amount`、`result`。
 
 ## POST `/jp_rec/list`
 
-`list[]`：`sn`、`game_category_code`、`game_type_code`、`game_code`、`jp_type`、`desk_id`、`acc`、`player_acc`、`bet_amount`、`amount`（JP 派奖）、`beted_at`、`settled_at`、`agent`、`member`、`slot_bet_detail`。
+`list[]`：`sn`、[游戏类别](/zh-CN/enums#game-category)、`game_type_code`、`game_code`、[JP 类型](/zh-CN/enums#jp-type)、`desk_id`、`acc`、`player_acc`、`bet_amount`、`amount`（JP 派奖）、`beted_at`、`settled_at`、`agent`、`member`、`slot_bet_detail`。
 
 ## POST `/jp_rec/detail`
 
@@ -74,6 +74,6 @@ description: 注单、JP、报表、刮刮卡。
 
 ## POST `/scratch_card_rec/list`
 
-`list[]`：`sn`（`SC_{id}`）、`activity_name`、`card_code`、`card_name`、`prize_level`、`prize_amount`、`status`、`player_acc`、`member`（可为 null）、`claimed_at`、`scratched_at`。
+`list[]`：`sn`（`SC_{id}`）、`activity_name`、`card_code`、`card_name`、`prize_level`、`prize_amount`、`status`（[刮刮卡状态](/zh-CN/enums#scratch-status)）、`player_acc`、`member`（可为 null）、`claimed_at`、`scratched_at`。请求可选 `lang`（[语系](/zh-CN/enums#lang)）。
 
 `summary`：`total_count`、`pending_count`、`claimed_count`、`scratched_count`、`total_prize`、`scratched_prize`（已派奖金）。

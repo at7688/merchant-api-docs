@@ -37,8 +37,8 @@ description: 注單、JP、報表、刮刮卡。
 |---|---|---|
 | `id` | integer | 內部識別 |
 | `code` | string | 遊戲代碼，對應登入 `game_code` |
-| `name` | object | 多語系名稱，鍵為語系代碼 |
-| `game_category_code` | string | 類別代碼 |
+| `name` | object | 多語系名稱，鍵為 [語系](/enums#lang) |
+| `game_category_code` | string | [遊戲類別](/enums#game-category) |
 | `game_type_code` | string | 類型代碼 |
 </Card>
 
@@ -67,7 +67,7 @@ description: 注單、JP、報表、刮刮卡。
 |---|---|---|
 | `sn` | string | 注單單號 |
 | `round_sn` | string | 局號 |
-| `game_category_code` | string | 類別 |
+| `game_category_code` | string | [遊戲類別](/enums#game-category) |
 | `game_type_code` | string | 類型 |
 | `game_code` | string | 遊戲代碼 |
 | `acc` | string | 完整帳號 |
@@ -76,10 +76,10 @@ description: 注單、JP、報表、刮刮卡。
 | `win_amount` | number | 派彩額 |
 | `valid_amount` | number | 有效投注 |
 | `result` | number | 輸贏（派彩 − 投注） |
-| `free_game_type` | string | `NONE`、`TRIGGER`、`PURCHASE` |
+| `free_game_type` | string | [免費遊戲](/enums#free-game-type) |
 | `beted_at` | integer | 下注時間，Unix 秒 |
 | `settled_at` | integer | 結算時間，Unix 秒；未結算可為 0 |
-| `status` | string | `PENDING`、`PROCESSING`、`FINISH`、`CANCEL` |
+| `status` | string | [注單狀態](/enums#bet-status) |
 | `agent` | object | 商戶摘要 |
 | `member` | object | 玩家摘要 |
 | `slot_bet_detail` | object | 遊戲端明細，結構依遊戲而異 |
@@ -93,7 +93,7 @@ description: 注單、JP、報表、刮刮卡。
 | 欄位 | 必填 | 型別 | 說明 |
 |---|---|---|---|
 | `sn` | 是 | string | 注單單號，長度 ≤ 120 |
-| `lang` | 是 | string | BCP 47 |
+| `lang` | 是 | string | BCP 47。[語系](/enums#lang) |
 </Card>
 
 <Card title="回應" icon="arrow-down-to-bracket">
@@ -127,7 +127,7 @@ description: 注單、JP、報表、刮刮卡。
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `sn` | string | 查詢之單號 |
-| `status` | string | `PENDING`（含已收下、寫庫前）、`PROCESSING`、`FINISH`、`CANCEL`，或 `UNKNOWN`（查無） |
+| `status` | string | [注單狀態](/enums#bet-status) |
 
 單號前 6 碼若為 `YYMMDD`（UTC+8／`Asia/Shanghai` 日期）則用於分區裁剪；否則仍可查詢。`UNKNOWN` 不得據以自動退款。
 </Card>
@@ -140,8 +140,8 @@ description: 注單、JP、報表、刮刮卡。
 | `page` | 是 | integer | ≥ 1 |
 | `perpage` | 是 | integer | 1–1000 |
 | `start_at` / `end_at` | 是 | integer | Unix 秒 |
-| `report_unit` | 是 | string | `min` 或 `day` |
-| `time_unit` | 是 | string | `bet`（依下注日）或 `settle`（依結算日） |
+| `report_unit` | 是 | string | [報表單位](/enums#report-unit) |
+| `time_unit` | 是 | string | [時間單位](/enums#time-unit) |
 | `acc` | 否 | string | |
 </Card>
 
@@ -181,10 +181,10 @@ description: 注單、JP、報表、刮刮卡。
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `sn` | string | 單號 |
-| `game_category_code` | string | 類別 |
+| `game_category_code` | string | [遊戲類別](/enums#game-category) |
 | `game_type_code` | string | 類型 |
 | `game_code` | string | 遊戲 |
-| `jp_type` | string | JP 類型 |
+| `jp_type` | string | [JP 類型](/enums#jp-type) |
 | `desk_id` | string | 桌號，可為空 |
 | `acc` | string | 完整帳號 |
 | `player_acc` | string | 不含前綴 |
@@ -208,9 +208,9 @@ description: 注單、JP、報表、刮刮卡。
 |---|---|---|---|
 | `page` / `perpage` | 是 | integer | perpage 1–1000 |
 | `start_at` / `end_at` | 是 | integer | Unix 秒 |
-| `status` | 否 | string | `PENDING`、`CLAIMED`、`SCRATCHED` |
+| `status` | 否 | string | [刮刮卡狀態](/enums#scratch-status) |
 | `acc` | 否 | string | |
-| `lang` | 否 | string | BCP 47，影響名稱欄。省略時為 `zh-TW` |
+| `lang` | 否 | string | [語系](/enums#lang)。省略時為 `zh-TW` |
 </Card>
 
 <Card title="回應" icon="arrow-down-to-bracket">
@@ -231,7 +231,7 @@ description: 注單、JP、報表、刮刮卡。
 | `card_name` | string | 卡面名稱 |
 | `prize_level` | string | 獎項等級 |
 | `prize_amount` | number | 獎金 |
-| `status` | string | `PENDING`、`CLAIMED`、`SCRATCHED` |
+| `status` | string | [刮刮卡狀態](/enums#scratch-status) |
 | `player_acc` | string | 不含前綴；未領取可為空 |
 | `member` | object \| null | 玩家摘要；未領取為 null |
 | `claimed_at` | integer | 領取時間，Unix 秒 |

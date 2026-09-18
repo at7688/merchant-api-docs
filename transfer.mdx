@@ -31,7 +31,7 @@ description: 轉帳錢包入金與出金。
 <Card title="回應" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `currency` | string | 幣別 |
+| `currency` | string | [幣別](/enums#currency) |
 | `balance` | number | 本筆完成後之平台餘額 |
 
 ```json
@@ -132,6 +132,6 @@ HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀�
 | `id` | integer | 內部識別 |
 | `acc` | string | 完整帳號 |
 | `name` | string | 顯示名稱 |
-| `player_type` | string | `AGENT` 或 `MEMBER` |
-| `currency` | string | 幣別 |
-| `sub_role` | string | 子角色，可為空字串 |
+| `player_type` | string | [帳號類型](/enums#player-type) |
+| `currency` | string | [幣別](/enums#currency) |
+| `sub_role` | string | [子角色](/enums#sub-role) |

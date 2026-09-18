@@ -52,14 +52,14 @@ description: 平台对商户的回调。超时 15 秒。
 
 ## POST `{base}/player/win`
 
-加款。锦标赛 `game_code` 为 `TOURNAMENT`。
+加款。锦标赛 `game_code` 见 [`TOURNAMENT`](/zh-CN/enums#game-code)。
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `timestamp` | integer | Unix 秒 |
 | `sn` | string | 幂等键 |
-| `game_code` | string | 游戏或 `TOURNAMENT` |
+| `game_code` | string | 游戏代码，或 [锦标赛](/zh-CN/enums#game-code) |
 | `acc` | string | 不含前缀 |
 | `name` | string | 显示名称 |
 | `amount` | number | 增加额，≥ 0（含未中奖） |

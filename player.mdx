@@ -61,7 +61,7 @@ description: 建立、餘額、登入、登出。
 <Card title="回應" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `currency` | string | 幣別，例如 `TWD` |
+| `currency` | string | [幣別](/enums#currency) |
 | `balance` | number | 平台餘額 |
 
 ```json
@@ -80,9 +80,9 @@ description: 建立、餘額、登入、登出。
 | 欄位 | 必填 | 型別 | 說明 |
 |---|---|---|---|
 | `acc` | 是 | string | 玩家帳號。英數 6–60 |
-| `lang` | 是 | string | BCP 47，例如 `zh-TW` |
+| `lang` | 是 | string | BCP 47。[語系](/enums#lang) |
 | `ip` | 是 | string | 玩家 IPv4 或 IPv6 |
-| `device` | 是 | string | `DESKTOP` 或 `MOBILE` |
+| `device` | 是 | string | [裝置](/enums#device) |
 | `game_code` | 否 | string | 遊戲代碼，大小寫不拘（內部轉大寫）。省略或空字串進入大廳 |
 | `return_url` | 否 | string | 離開遊戲後之返回 URL |
 

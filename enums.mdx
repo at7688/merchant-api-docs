@@ -1,17 +1,11 @@
 ---
 title: 列舉與代碼
-description: 商戶 API 請求、回應、回調之封閉字串。
+description: 商戶 API 封閉字串。
 ---
 
-本頁僅列商戶 API **請求、回應、回調**會出現的封閉字串，取自平台實碼。錯誤碼見 [錯誤碼表](/errors)。
+錯誤碼見 [錯誤碼表](/errors)。
 
-不含遊戲 RPC、後台內部狀態（注單鎖、補送佇列等）。`game_code`（除回調之 `TOURNAMENT`）與 `game_type_code` 非封閉集合，以 [`/game/list`](/records) 為準。
-
-## 語系 `lang`
-
-請求驗證為 BCP 47（`bcp47_language_tag`）。通過驗證不表示大廳或遊戲必有該語系文案。`lang` 原樣寫入登入 URL 與牌面結果頁。
-
-平台內建語系鍵（`/game/list` 之 `name` 物件鍵、刮刮卡名稱解析）：
+## 語系 `lang` {#lang}
 
 | 代碼 | 說明 |
 |---|---|
@@ -27,24 +21,14 @@ description: 商戶 API 請求、回應、回調之封閉字串。
 | `ne-NP` | 尼泊爾語 |
 | `es-ES` | 西班牙語 |
 
-| 接口 | 行為 |
-|---|---|
-| `/player/login` | 必填，寫入 URL 之 `lang` |
-| `/bet_rec/detail`、`/jp_rec/detail` | 必填，寫入牌面結果頁 |
-| `/scratch_card_rec/list` | 可省略，預設 `zh-TW`。名稱解析：請求語系 → `zh-TW` → `en-US`，皆無則空字串 |
+## 裝置 `device` {#device}
 
-## 裝置 `device`
-
-`/player/login` 必填，`oneof` 僅下列兩值：
-
-| 值 | 說明 |
+| 代碼 | 說明 |
 |---|---|
 | `DESKTOP` | 桌面 |
 | `MOBILE` | 行動裝置 |
 
-## 幣別 `currency`
-
-玩家建立時複製自商戶代理，請求不帶此欄。出現於 `/player/balance`、`/transfer/*` 以及 `agent`／`member` 摘要。
+## 幣別 `currency` {#currency}
 
 | 代碼 | 說明 |
 |---|---|
@@ -55,9 +39,7 @@ description: 商戶 API 請求、回應、回調之封閉字串。
 | `IDR` | 印尼盾 |
 | `INR` | 印度盧比 |
 
-## 遊戲類別 `game_category_code`
-
-出現於 `/game/list`、注單、JP。平台定義值如下；**實際開出的遊戲以 `/game/list` 為準**。
+## 遊戲類別 `game_category_code` {#game-category}
 
 | 代碼 | 說明 |
 |---|---|
@@ -74,30 +56,24 @@ description: 商戶 API 請求、回應、回調之封閉字串。
 | `LOTTERY` | 彩球 |
 | `OTHERS` | 其他 |
 
-`game_type_code` 由後台維護，無固定表，以 `/game/list` 回傳值為準。
+## `game_code` {#game-code}
 
-## 特殊 `game_code`
-
-登入與清單之遊戲代碼以 `/game/list` 之 `code` 為準（請求轉大寫，URL 路徑為小寫）。
-
-| 值 | 出現處 |
+| 代碼 | 說明 |
 |---|---|
-| `TOURNAMENT` | 單錢包 `/player/win` 錦標賽派彩。不在 `/game/list`，不得用於 `/player/login` |
+| `TOURNAMENT` | 錦標賽 |
 
-## 帳號類型 `player_type`
+其餘以 `/game/list` 之 `code` 為準。
 
-`agent`／`member` 摘要：
+## 帳號類型 `player_type` {#player-type}
 
-| 值 | 說明 |
+| 代碼 | 說明 |
 |---|---|
 | `AGENT` | 商戶代理 |
 | `MEMBER` | 玩家 |
 
-## 子角色 `sub_role`
+## 子角色 `sub_role` {#sub-role}
 
-同摘要物件。會員多為空字串。
-
-| 值 | 說明 |
+| 代碼 | 說明 |
 |---|---|
 | （空字串） | 未分子角色 |
 | `ALL` | 全部 |
@@ -105,103 +81,50 @@ description: 商戶 API 請求、回應、回調之封閉字串。
 | `FINANCE` | 財務 |
 | `OPS` | 營運 |
 
-## 帳號狀態
+## 注單 `status` {#bet-status}
 
-不作為商戶 API 回應欄位。登入時對應錯誤碼：
-
-| 情況 | `code` |
+| 代碼 | 說明 |
 |---|---|
-| 未啟用 | `ACC_NOT_ACTIVE` |
-| 已暫停 | `ACC_SUSPEND` |
-
-後台狀態值為 `ACTIVE`、`SUSPEND`。
-
-## 注單 `status`
-
-`/bet_rec/list`：
-
-| 值 | 說明 |
-|---|---|
-| `PENDING` | 已接受、尚未結算（含已收下、寫庫前） |
+| `PENDING` | 已接受、尚未結算 |
 | `PROCESSING` | 處理中 |
 | `FINISH` | 已結算 |
 | `CANCEL` | 已取消 |
+| `UNKNOWN` | 查無此單 |
 
-`/bet_rec/query` 另可能為 `UNKNOWN`（查無此單）。不得據 `UNKNOWN` 自動退款。
+## 刮刮卡 `status` {#scratch-status}
 
-## 刮刮卡 `status`
-
-`/scratch_card_rec/list` 篩選與列值：
-
-| 值 | 說明 |
+| 代碼 | 說明 |
 |---|---|
 | `PENDING` | 未領取 |
 | `CLAIMED` | 已領未刮 |
 | `SCRATCHED` | 已刮 |
 
-票券 `sn` 形狀為 `SC_{id}`。`prize_level` 為多語系名稱字串，非封閉代碼。
+## 免費遊戲 `free_game_type` {#free-game-type}
 
-## 免費遊戲 `free_game_type`
-
-注單列：
-
-| 值 | 說明 |
+| 代碼 | 說明 |
 |---|---|
 | `NONE` | 無免費遊戲 |
 | `TRIGGER` | 局內觸發 |
 | `PURCHASE` | 購買進入 |
 
-商戶贈送旋轉不使用此欄標示；見 [贈送旋轉](/free-round)。
+## JP 類型 `jp_type` {#jp-type}
 
-## JP 類型 `jp_type`
-
-`/jp_rec/list`：
-
-| 值 |
+| 代碼 |
 |---|
 | `MINI` |
 | `MEGA` |
 | `GRAND` |
 
-## 報表單位
+## 報表單位 `report_unit` {#report-unit}
 
-`/bet_report/list`：
-
-| 欄位 | 允許值 |
+| 代碼 | 說明 |
 |---|---|
-| `report_unit` | `min`、`day` |
-| `time_unit` | `bet`（依下注日）、`settle`（依結算日） |
+| `min` | 分鐘 |
+| `day` | 日 |
 
-## 牌面結果頁
+## 時間單位 `time_unit` {#time-unit}
 
-| 接口 | URL 參數 |
+| 代碼 | 說明 |
 |---|---|
-| `/bet_rec/detail` | `sn`、`lang`、`is_jp=0` |
-| `/jp_rec/detail` | `sn`、`lang`、`is_jp=1` |
-
-## 單錢包回調路徑
-
-平台對 `{MerchantApiUrl}{path}` 發出 `POST`。base **不得**以 `/` 結尾。
-
-| 路徑 | 用途 |
-|---|---|
-| `/player/balance` | 查餘額 |
-| `/player/bet` | 扣款 |
-| `/player/win` | 派彩（`amount` ≥ 0，含未中獎） |
-| `/player/refund` | 退款 |
-
-## 回調回應 `code`
-
-商戶須回 JSON，頂層字串 `code`。HTTP 狀態須為 2xx。
-
-| 值 | 說明 |
-|---|---|
-| `OK` | 成功。冪等重送仍回 `OK`，餘額不變 |
-| `BALANCE_INSUFFICIENT` | 僅 `/player/bet`：餘額不足。平台將此碼回傳遊戲端 |
-| 其他非 `OK` | 視為拒絕。平台不將其當成功 |
-
-規格見 [回調](/callback)。
-
-## 轉帳單號字元
-
-`/transfer/*` 之 `sn`：英數與 `_`、`-`，長度 6–120。同一商戶內唯一。
+| `bet` | 下注日 |
+| `settle` | 結算日 |

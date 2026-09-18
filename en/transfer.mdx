@@ -22,7 +22,7 @@ Transfer wallet only. `sn` is unique **per merchant**. Envelope: [Protocol](/en/
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `currency` | string | Currency |
+| `currency` | string | [Currency](/en/enums#currency) |
 | `balance` | number | Platform balance after this transfer |
 
 | code | Description |
@@ -86,6 +86,6 @@ Missing: `TRANSFER_NOT_FOUND`.
 | `id` | integer | Internal id |
 | `acc` | string | Full account |
 | `name` | string | Display name |
-| `player_type` | string | `AGENT` or `MEMBER` |
-| `currency` | string | Currency |
-| `sub_role` | string | Sub-role; may be empty |
+| `player_type` | string | [Account type](/en/enums#player-type) |
+| `currency` | string | [Currency](/en/enums#currency) |
+| `sub_role` | string | [Sub-role](/en/enums#sub-role) |
