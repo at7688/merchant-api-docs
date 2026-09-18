@@ -127,9 +127,10 @@ description: 注單、JP、報表、刮刮卡。
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `sn` | string | 查詢之單號 |
-| `status` | string | [注單狀態](/enums#bet-status) |
+| `status` | string | 有單時：[注單狀態](/enums#bet-status) |
+| `code` | string | 無單時：`BET_NOT_FOUND`。此時無 `status` |
 
-單號前 6 碼若為 `YYMMDD`（UTC+8／`Asia/Shanghai` 日期）則用於分區裁剪；否則仍可查詢。`UNKNOWN` 不得據以自動退款。
+外層 `code` 仍為 `OK`。單號前 6 碼若為 `YYMMDD`（UTC+8／`Asia/Shanghai` 日期）則用於分區裁剪；否則仍可查詢。列上 `BET_NOT_FOUND` 不得據以自動退款。
 </Card>
 
 ## POST `/bet_report/list`

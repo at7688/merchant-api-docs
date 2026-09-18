@@ -56,7 +56,7 @@ description: 注单、JP、报表、刮刮卡。
 
 ## POST `/bet_rec/query`
 
-请求：`sns`（1–100）。响应 `list[]`：`sn`、`status`（[注单状态](/zh-CN/enums#bet-status)）。`UNKNOWN` 不得据此自动退款。
+请求：`sns`（1–100）。外层 `code` 仍为 `OK`。`list[]` 与请求等长：有单为 `sn` + `status`（[注单状态](/zh-CN/enums#bet-status)）；无单为 `sn` + `code` `BET_NOT_FOUND`（无 `status`）。列上 `BET_NOT_FOUND` 不得据此自动退款。
 
 ## POST `/bet_report/list`
 

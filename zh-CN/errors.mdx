@@ -35,6 +35,7 @@ description: 成功值仅为 OK。
 | `TRANSFER_SN_EXIST` | `sn` 已成功入账 | 调用 `/transfer/check`。非失败 |
 | `TRANSFER_NOT_FOUND` | 无此转账 | 若前次为 HTTP 500，间隔后再查询；仍无则可使用新 `sn` |
 | `GAME_NOT_FOUND` | 游戏代码无效 | 以 `/game/list` 核对 |
+| `BET_NOT_FOUND` | `/bet_rec/query` 查无此单 | 列上 `code`，外层仍 `OK`。不得自动退款 |
 | `GAME_MAINTAIN` | 游戏或类别维护中 | 延后进入 |
 | `BET_AMOUNT_RANGE` | 注额超出该玩家该游戏上下限 | 调整金额 |
 | `FREE_ROUND_CAP` | 超过商户当月免费旋转名义总额 | 不得重送同一批 |
@@ -47,6 +48,6 @@ HTTP 500 或连接中断时，不得假设成功或失败。
 | 场景 | 规定 |
 |---|---|
 | `/transfer/add` | 以原 `sn` 调用 `/transfer/check`。查得记录即已入账；`TRANSFER_NOT_FOUND` 后方可使用新 `sn` |
-| 单一钱包 | 以商户账本中该 `sn` 为准。`/bet_rec/query` 返回 `UNKNOWN` 时不得自动退款 |
+| 单一钱包 | 以商户账本中该 `sn` 为准。`/bet_rec/query` 列上 `BET_NOT_FOUND` 时不得自动退款 |
 
 单一钱包回调成功时 `code` 为 `OK`。

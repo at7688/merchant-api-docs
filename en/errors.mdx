@@ -35,6 +35,7 @@ Retry may reuse the original parameters. Transfer `sn` must not be replaced for 
 | `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
 | `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, requery; then a new `sn` is allowed |
 | `GAME_NOT_FOUND` | Invalid game code | `/game/list` |
+| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet | Item-level `code`; envelope remains `OK`. Do not auto-refund |
 | `GAME_MAINTAIN` | Maintenance | Defer entry |
 | `BET_AMOUNT_RANGE` | Stake outside min/max | Adjust amount |
 | `FREE_ROUND_CAP` | Monthly grant cap exceeded | Do not resubmit the batch |
@@ -47,6 +48,6 @@ HTTP 500 or a dropped connection does not imply success or failure.
 | Context | Rule |
 |---|---|
 | `/transfer/add` | `/transfer/check` with the original `sn`. A row means posted; `TRANSFER_NOT_FOUND` allows a new `sn` |
-| Seamless | Merchant ledger for that `sn`. `/bet_rec/query` `UNKNOWN` must not trigger an automatic refund |
+| Seamless | Merchant ledger for that `sn`. `/bet_rec/query` item `BET_NOT_FOUND` must not trigger an automatic refund |
 
 Seamless-wallet callback success: `code` is `OK`.

@@ -64,7 +64,7 @@ Request: `sn`, `lang` ([language](/en/enums#lang)). Response `data.url`: result-
 
 ## POST `/bet_rec/query`
 
-Request: `sns` (1–100). Response `list[]`: `sn`, `status` ([bet status](/en/enums#bet-status)). If the first six characters of `sn` are `YYMMDD` (UTC+8, `Asia/Shanghai`), they prune partitions. `UNKNOWN` must not trigger an automatic refund.
+Request: `sns` (1–100). Envelope `code` remains `OK`. `list[]` matches request order: found rows are `sn` + `status` ([bet status](/en/enums#bet-status)); missing rows are `sn` + `code` `BET_NOT_FOUND` (no `status`). If the first six characters of `sn` are `YYMMDD` (UTC+8, `Asia/Shanghai`), they prune partitions. Item `BET_NOT_FOUND` must not trigger an automatic refund.
 
 ## POST `/bet_report/list`
 
