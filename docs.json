@@ -17,7 +17,7 @@
         "groups": [
           {
             "group": "總則",
-            "pages": ["index", "protocol", "errors"]
+            "pages": ["index", "protocol"]
           },
           {
             "group": "轉帳錢包",
@@ -38,6 +38,10 @@
               "records",
               "free-round"
             ]
+          },
+          {
+            "group": "附錄",
+            "pages": ["errors"]
           }
         ]
       },
@@ -46,7 +50,7 @@
         "groups": [
           {
             "group": "通则",
-            "pages": ["zh-CN/index", "zh-CN/protocol", "zh-CN/errors"]
+            "pages": ["zh-CN/index", "zh-CN/protocol"]
           },
           {
             "group": "转账钱包",
@@ -67,6 +71,10 @@
               "zh-CN/records",
               "zh-CN/free-round"
             ]
+          },
+          {
+            "group": "附录",
+            "pages": ["zh-CN/errors"]
           }
         ]
       },
@@ -75,7 +83,7 @@
         "groups": [
           {
             "group": "General",
-            "pages": ["en/index", "en/protocol", "en/errors"]
+            "pages": ["en/index", "en/protocol"]
           },
           {
             "group": "Transfer wallet",
@@ -96,6 +104,10 @@
               "en/records",
               "en/free-round"
             ]
+          },
+          {
+            "group": "Appendix",
+            "pages": ["en/errors"]
           }
         ]
       }
