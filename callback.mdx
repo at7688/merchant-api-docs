@@ -27,7 +27,7 @@ description: 平台對商戶之回調。Timeout 15 秒。
 
 玩家離線後仍可能收到 `/player/win`。贈送旋轉消耗時**不發** `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。
 
-動錢請求以 `sn` 為唯一鍵：未見則執行並持久化；已成功則回傳首次結果且餘額不變；已拒絕則回傳首次錯誤 `code`。`bet`／`win`／`refund` 之 `acc` 為**不含前綴**；僅 `balance` 回調同時給完整 `acc` 與 `player_acc`。
+動錢請求以 `sn` 為唯一鍵：`bet`／`win` 未見則執行並持久化；已成功則回傳首次結果且餘額不變；已拒絕則回傳首次錯誤 `code`。`refund` 之規則見下方 `/player/refund`。`bet`／`win`／`refund` 之 `acc` 為**不含前綴**；僅 `balance` 回調同時給完整 `acc` 與 `player_acc`。
 
 ## POST `{base}/player/balance`
 
@@ -125,3 +125,7 @@ description: 平台對商戶之回調。Timeout 15 秒。
 | `code` | string | `"OK"`。已退過仍回 `OK`，餘額不變 |
 | `data` | object \| omitted | 得省略 |
 </Card>
+
+<Warning>
+`refund` 僅退回同一 `sn` 之 `/player/bet` 實際扣下的金額。商戶未曾收到該 `sn` 之 bet，或曾以錯誤 `code` 拒絕，須回 `OK` 且不得加款。平台於 bet 結果未決時即發 `refund`，該 bet 可能從未抵達商戶。
+</Warning>

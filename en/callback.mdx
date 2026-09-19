@@ -93,3 +93,7 @@ Credit. Tournament `game_code`: [`TOURNAMENT`](/en/enums#game-code).
 | `code` | string | `"OK"` even if already refunded |
 | `data` | object \| omitted | May be omitted |
 </Card>
+
+<Warning>
+`refund` only returns what the `/player/bet` with the same `sn` actually debited. If the merchant never received that bet, or rejected it with an error `code`, it must return `OK` without crediting. The platform sends `refund` as soon as a bet's outcome is unknown, so the bet may never have reached the merchant.
+</Warning>

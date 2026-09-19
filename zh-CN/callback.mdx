@@ -93,3 +93,7 @@ description: 平台对商户的回调。超时 15 秒。
 | `code` | string | `"OK"`。已退过仍回 `OK` |
 | `data` | object \| omitted | 可省略 |
 </Card>
+
+<Warning>
+`refund` 仅退回同一 `sn` 的 `/player/bet` 实际扣下的金额。商户从未收到该 `sn` 的 bet，或曾以错误 `code` 拒绝，须回 `OK` 且不得加款。平台在 bet 结果未决时即发 `refund`，该 bet 可能从未到达商户。
+</Warning>
