@@ -6,7 +6,8 @@ description: 成功值僅為 OK。
 `code` 等於 `OK` 表示成功。其餘值表示失敗。`data` 於多數錯誤為 `null`。
 
 <Warning>
-`ACC_NOT_ACTIVE` 與 `ACC_SUSPEND` 兩張表都有，意義相反：**商戶層**（整個商戶被停權，所有接口都會失敗）由鑑權階段回，`data` 是帶 `agent` 的物件；**玩家層**（僅該玩家）只從 `/player/login` 回，`data` 為 `null`。請依 `data` 判斷，不要只看 `code`。
+`ACC_NOT_ACTIVE`、`ACC_SUSPEND` 兩張表皆有，以 `data` 區分：商戶層帶 `agent` 物件，
+玩家層為 `null`（僅 `/player/login`）。
 </Warning>
 
 ## 傳輸與鑑權
@@ -18,12 +19,12 @@ description: 成功值僅為 OK。
 | `API_KEY_INVALID` | ApiKey 未設定或長度非 32 位元組 | 核對金鑰 |
 | `DATA_FORMAT_INVALID` | `data` 非合法 hex | 核對編碼 |
 | `DECRYPT_FAILED` | 解密失敗 | 核對金鑰、nonce 排列與明文 JSON |
-| `PARAM_INVALID` | 請求不合格：**外層或內層** JSON 無法解析、欄位型別不對、或欄位驗證未通過 | 先確認外層 `{agent_acc, data}` 是合法 JSON 且型別正確（`agent_acc` 須為字串），再查內層必填、型別、長度；時間為 Unix 秒 |
+| `PARAM_INVALID` | 請求不合格：外層或內層 JSON 無法解析、欄位型別不對、或欄位驗證未通過 | 核對外層 `{agent_acc, data}` 與內層必填、型別、長度；時間為 Unix 秒 |
 | `IP_BLOCKED` | 來源 IP 或國家被封鎖 | 變更來源或申請解除 |
 | `ACC_NOT_ACTIVE` | **商戶**未啟用（`data` 帶 `{agent, status}`） | 終止呼叫 |
 | `ACC_SUSPEND` | **商戶**已暫停（`data` 帶 `{agent, current_status}`） | 終止呼叫 |
-| `TOO_MANY_REQUESTS` | 超過速率。僅 `/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list` 四支有限流（每商戶每分鐘 10 次） | 降低頻率 |
-| `INTERNAL_SERVER_ERROR` | 系統錯誤（伴隨 HTTP 500）。**可能發生在業務邏輯執行中**，例如餘額已異動之後 | 結果未決（見下方「結果未決」一節），不得逕行判定失敗 |
+| `TOO_MANY_REQUESTS` | 超過速率。限流僅套用於 `/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`（每商戶每分鐘 10 次） | 降低頻率 |
+| `INTERNAL_SERVER_ERROR` | 系統錯誤（伴隨 HTTP 500）。可能發生在業務邏輯執行中 | 結果未決，見下節。不得逕行判定失敗 |
 
 除 `INTERNAL_SERVER_ERROR` 外，上述錯誤在請求進入業務邏輯前發生，重試得使用原參數；轉帳不得因此更換 `sn`。
 
@@ -39,7 +40,7 @@ description: 成功值僅為 OK。
 | `TRANSFER_SN_EXIST` | `sn` 已成功入帳 | 呼叫 `/transfer/check`。非失敗 |
 | `TRANSFER_NOT_FOUND` | 無此轉帳 | 若前次為 HTTP 500，間隔後再查詢；仍無則可使用新 `sn` |
 | `GAME_NOT_FOUND` | 遊戲代碼無效 | 以 `/game/list` 核對 |
-| `BET_NOT_FOUND` | `/bet_rec/query` 查無此單 | 該列 `code`；有單之列 `code` 為 `OK`。外層仍 `OK`。不得自動退款。`TOUR_`／`SC_` 開頭的派彩本來就不在注單裡，查不到是預期行為（見 [回調](/callback)） |
+| `BET_NOT_FOUND` | `/bet_rec/query` 查無此單 | 該列 `code`；有單之列 `code` 為 `OK`。外層仍 `OK`。不得自動退款。`TOUR_`／`SC_` 開頭者不在注單內，屬正常（見 [回調](/callback)） |
 | `GAME_MAINTAIN` | 遊戲或類別維護中 | 延後進入 |
 | `BET_AMOUNT_RANGE` | 注額超出該玩家該遊戲上下限 | 調整金額 |
 | `FREE_ROUND_CAP` | 超過商戶當月贈送名目總額 | 不得重送同一批 |

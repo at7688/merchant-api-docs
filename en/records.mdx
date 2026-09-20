@@ -9,7 +9,7 @@ Time columns are **not** always bet time:
 
 | Endpoint | `start_at` / `end_at` |
 |---|---|
-| `/bet_rec/list` | `updated_at` (includes settlement). Also pruned by **bet date** (`beted_date`, UTC+8 midnight), which must fall between the day before the window's start day and the window's end day. A bet that changes more than a day after it was placed is therefore **not returned** — look it up by `sn` with `/bet_rec/query` instead |
+| `/bet_rec/list` | `updated_at` (includes settlement). Also pruned by bet date (`beted_date`, UTC+8 midnight), which must fall between the day before the window's start day and the window's end day. A bet that changes more than a day after it was placed is not returned; look it up by `sn` with `/bet_rec/query` |
 | `/jp_rec/list` | `created_at` |
 | `/bet_report/list` | `beted_date` or `settled_date` / minute, Unix seconds at UTC+8 (`Asia/Shanghai`) 00:00 |
 | `/scratch_card_rec/list` | `updated_at` |
@@ -69,21 +69,17 @@ Request: `sns` (1–100). Envelope `code` remains `OK`. `list[]` matches request
 ## POST `/bet_report/list`
 
 <Warning>
-**Aggregates are kept for 60 days only.** An earlier window returns `code` `OK` with
-`row_count` 0 — an empty list, not an error, which reads like "no betting in that period".
-Keep your own copy of anything older. `/bet_rec/list` is not subject to this.
+Aggregates are kept for **60 days**; an earlier window returns an empty list (`code` `OK`,
+`row_count` 0). `/bet_rec/list` is not subject to this.
 </Warning>
 
-The two `time_unit` axes cover **different populations** and must not be summed or reconciled
+The two `time_unit` axes cover different populations and must not be summed or reconciled
 against each other:
 
 | `time_unit` | Bets counted |
 |---|---|
-| `bet` | every bet stored in the period, **including unsettled and refunded** ones (whose `win_amount` / `result` are 0) |
-| `settle` | **settled (`FINISH`) only** |
-
-For the same period the `bet` axis reports a larger `bet_count` / `bet_amount` than the
-`settle` axis. That is expected.
+| `bet` | every bet stored in the period, including unsettled and refunded ones (whose `win_amount` / `result` are 0) |
+| `settle` | settled (`FINISH`) only |
 
 Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` ([aggregation period](/en/enums#report-unit)), `time_unit` ([time axis](/en/enums#time-unit)), optional `acc`.
 
@@ -104,6 +100,6 @@ Request: `page`, `perpage`, `start_at`, `end_at`, optional `status` ([scratch-ca
 `list[]`: `sn` (`SC_{id}`), `activity_name`, `card_code`, `card_name`, `prize_level`, `prize_amount`, `status`, `player_acc`, `member` (object or null), `claimed_at`, `scratched_at`.
 
 `summary`: `total_count` (integer), then `pending_count`, `claimed_count`, `scratched_count`,
-`total_prize`, `scratched_prize` (paid amount) — these five are **decimal strings, not numbers**
-(e.g. `"pending_count": "1"`, `"total_prize": "150.5000"` — four decimal places), and the three counts come back as an
-**empty string** `""` when the window contains no tickets. Parse them as strings and convert.
+`total_prize`, `scratched_prize` (paid amount) — these five are **strings**
+(e.g. `"pending_count": "1"`, `"total_prize": "150.5000"`); the three counts are an
+**empty string** `""` when the window contains no tickets.

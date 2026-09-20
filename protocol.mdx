@@ -125,14 +125,12 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 | 狀態 | 意義 |
 |---|---|
-| `200` | 請求已被處理。**成功與否一律讀 `code`**，不得因為是 2xx 就當成功 |
+| `200` | 請求已被處理。成功與否讀 `code` |
 | `404` | 路徑不存在 |
 | `500` | 結果未決，body 未必為 JSON |
 
 <Warning>
-本文件列出的**所有** `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`、`IP_NOT_ALLOWED`、
-`DECRYPT_FAILED` 以及全部業務碼）都以 **HTTP 200** 搭配信封回傳。只看 HTTP 狀態、
-或只在 4xx／429 才退避重試的實作，會把每一個錯誤都當成成功。
+本文件所有 `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`）皆以 **HTTP 200** 回傳。
 </Warning>
 
 HTTP 500 表示結果未決：轉帳須以同一 `sn` 呼叫 `/transfer/check`；單錢包須以商戶帳本及 `/bet_rec/query` 核對，不得逕行沖正。

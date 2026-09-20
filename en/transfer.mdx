@@ -58,7 +58,7 @@ Missing: `TRANSFER_NOT_FOUND`.
 | code | Definition | Handling |
 |---|---|---|
 | `TRANSFER_NOT_FOUND` | No such transfer | After an HTTP 500, requery; only then may a new `sn` be used |
-| `ACC_NOT_FOUND` | The `acc` used for the query matches no player | **The query is invalid — it does not mean the transfer was not posted.** Requery with the same `acc` as the original `/transfer/add`; do **not** resend under a new `sn`, or you may post it twice |
+| `ACC_NOT_FOUND` | The `acc` used for the query matches no player | The query is invalid; it does not mean the transfer was not posted. Requery with the same `acc` as the original `/transfer/add`. Do not resend under a new `sn` |
 </Card>
 
 ## POST `/transfer/list`

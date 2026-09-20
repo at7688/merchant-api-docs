@@ -9,7 +9,7 @@ description: 注單、JP、報表、刮刮卡。
 
 | 接口 | `start_at`／`end_at` 對應 |
 |---|---|
-| `/bet_rec/list` | `updated_at`（異動時間，含結算）。另以**下注日**（`beted_date`，UTC+8 當日 00:00）裁切，須落在「區間起日的前一天」到「區間結束日」之間。因此下注超過一天後才異動的單**查不到**，需改用 `/bet_rec/query` 依單號查 |
+| `/bet_rec/list` | `updated_at`（異動時間，含結算）。另以下注日（`beted_date`，UTC+8 當日 00:00）裁切，須介於區間起日前一天至區間結束日。下注逾一天後才異動的單不在結果內，改用 `/bet_rec/query` 依單號查 |
 | `/jp_rec/list` | `created_at` |
 | `/bet_report/list` | `beted_date` 或 `settled_date`／分鐘欄，值為 UTC+8（`Asia/Shanghai`）當日 00:00 之 Unix 秒 |
 | `/scratch_card_rec/list` | `updated_at`（狀態變更時間） |
@@ -152,19 +152,16 @@ description: 注單、JP、報表、刮刮卡。
 ## POST `/bet_report/list`
 
 <Warning>
-**彙總資料只保留 60 天。** 查更早的區間會回 `code` 為 `OK`、`row_count` 為 0 的空清單，
-不是錯誤——看起來像「那段期間沒有投注」。需要更早的資料請自行留存。
-`/bet_rec/list` 的來源表不在清理範圍，不受此限。
+彙總資料保留 **60 天**，更早的區間回空清單（`code` 為 `OK`、`row_count` 為 0）。
+`/bet_rec/list` 不受此限。
 </Warning>
 
-`time_unit` 兩個軸的**統計母體不同**，不應互相加總或對帳：
+`time_unit` 兩軸的統計母體不同，不應互相加總或對帳：
 
 | `time_unit` | 涵蓋的注單 |
 |---|---|
-| `bet` | 該期間所有落庫注單，**含未結算與已退款**（其 `win_amount`／`result` 為 0） |
-| `settle` | **僅已結算（`FINISH`）** 注單 |
-
-同一段期間 `bet` 軸的 `bet_count`／`bet_amount` 會大於 `settle` 軸，這是預期的。
+| `bet` | 該期間所有落庫注單，含未結算與已退款（其 `win_amount`／`result` 為 0） |
+| `settle` | 僅已結算（`FINISH`）注單 |
 
 <Card title="請求" icon="arrow-up-from-bracket">
 | 欄位 | 必填 | 型別 | 說明 |
@@ -281,8 +278,7 @@ description: 注單、JP、報表、刮刮卡。
 | `scratched_prize` | string | 已派獎金，對帳數（十進位數字字串，**四位**小數） |
 
 <Warning>
-除 `total_count` 外，其餘五個欄位是**字串**不是 number（例如 `"pending_count": "3"`、
-`"total_prize": "150.5000"`，小數四位）。區間內一張票都沒有時，三個 `*_count` 會是**空字串** `""`。
-請以字串解析後自行轉數值，不要用強型別直接映射成數字。
+除 `total_count` 外皆為字串（例如 `"pending_count": "1"`、`"total_prize": "150.5000"`）。
+區間內無票券時，三個 `*_count` 為空字串 `""`。
 </Warning>
 </Card>

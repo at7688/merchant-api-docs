@@ -92,7 +92,7 @@ HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀�
 | code | 說明 | 處理 |
 |---|---|---|
 | `TRANSFER_NOT_FOUND` | 無此轉帳 | 前次為 HTTP 500 時，間隔後再查；仍無則可使用新 `sn` |
-| `ACC_NOT_FOUND` | 查詢用的 `acc` 對不到玩家 | **查詢本身無效，不代表未入帳**。必須用與原 `/transfer/add` 相同的 `acc` 重查；此時**不得**換新 `sn` 重送，否則可能重複入帳 |
+| `ACC_NOT_FOUND` | 查詢用的 `acc` 對不到玩家 | 查詢無效，不代表未入帳。須以原 `/transfer/add` 的 `acc` 重查。不得換新 `sn` |
 </Card>
 
 ## POST `/transfer/list`

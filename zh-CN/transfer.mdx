@@ -54,7 +54,7 @@ HTTP 500：以原 `sn` 调用 `/transfer/check`。
 | code | 说明 | 处理 |
 |---|---|---|
 | `TRANSFER_NOT_FOUND` | 无此转账 | 前次为 HTTP 500 时，间隔后再查；仍无则可使用新 `sn` |
-| `ACC_NOT_FOUND` | 查询用的 `acc` 对不到玩家 | **查询本身无效，不代表未入账**。必须用与原 `/transfer/add` 相同的 `acc` 重查；此时**不得**换新 `sn` 重送，否则可能重复入账 |
+| `ACC_NOT_FOUND` | 查询用的 `acc` 对不到玩家 | 查询无效，不代表未入账。须以原 `/transfer/add` 的 `acc` 重查。不得换新 `sn` |
 </Card>
 
 ## POST `/transfer/list`

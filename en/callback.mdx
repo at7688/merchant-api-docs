@@ -9,10 +9,10 @@ Seamless wallet only. Platform `POST`s to `{MerchantApiUrl}{path}` (e.g. `https:
 Success: `code` is `OK`.
 </Warning>
 
-Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`** may later receive another `/player/win` or `/player/refund` (settle retry, operator resend, stuck-bet refund). One exception: a failed **tournament** payout is **never retried automatically and cannot be resent by an operator** — it is handled outside the system. Granted-spin consumption does **not** send `/player/bet`; settle may still send `/player/win` (`amount` may be 0). `acc` on bet/win/refund is unprefixed; only the balance callback sends both prefixed `acc` and `player_acc`. Idempotency on `sn`. `/player/win` may arrive after disconnect.
+Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`** may later receive another `/player/win` or `/player/refund` (settle retry, operator resend, stuck-bet refund). Exception: a failed **tournament** payout is not retried automatically and cannot be resent by an operator. Granted-spin consumption does **not** send `/player/bet`; settle may still send `/player/win` (`amount` may be 0). `acc` on bet/win/refund is unprefixed; only the balance callback sends both prefixed `acc` and `player_acc`. Idempotency on `sn`. `/player/win` may arrive after disconnect.
 
 <Warning>
-Keep `sn` de-duplication records for **at least 90 days**; do not use a short TTL. Operator resends have no deadline — a `win` or `refund` that timed out days or weeks ago may be resent today, and an expired de-duplication record means the merchant credits it twice. The platform's own bet lifecycle is kept for 60 days.
+Keep `sn` de-duplication records for **at least 90 days**. Operator resends have no deadline.
 </Warning>
 
 ## POST `{base}/player/balance`
@@ -56,7 +56,7 @@ Keep `sn` de-duplication records for **at least 90 days**; do not use a short TT
 
 ## POST `{base}/player/win`
 
-Credit. `game_code` comes from three sources — **not every payout maps to `/game/list`**:
+Credit. `game_code` comes from three sources:
 
 | `game_code` | `sn` shape | Preceding `/player/bet` | Reconcile with |
 |---|---|---|---|
@@ -65,9 +65,7 @@ Credit. `game_code` comes from three sources — **not every payout maps to `/ga
 | [`SCRATCH_CARD`](/en/enums#game-code) | `SC_{ticket}` | no | [`/scratch_card_rec/list`](/en/records) |
 
 <Warning>
-Do not reject `TOURNAMENT` or `SCRATCH_CARD` payouts because their `game_code` is absent from
-`/game/list`, and do not treat them as invalid because `/bet_rec/query` returns
-`BET_NOT_FOUND` — neither one is a bet.
+`TOURNAMENT` and `SCRATCH_CARD` are in neither `/game/list` nor `/bet_rec/query`; do not reject them on that basis.
 </Warning>
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
@@ -117,10 +115,8 @@ Do not reject `TOURNAMENT` or `SCRATCH_CARD` payouts because their `game_code` i
 ### Retries and deadline
 
 Until it receives `OK`, the platform retries the **same `sn`**: first after 60 seconds, then
-exponential backoff (60 × 2^n seconds) capped at 1 hour per interval, with a **24-hour total
-deadline**. A single refund may be retried a dozen or more times within that window — size your
-de-duplication records and alert thresholds accordingly.
+exponential backoff (60 × 2^n seconds), capped at 1 hour per interval, with a **24-hour total
+deadline**.
 
-After 24 hours the platform **stops retrying**. The refund moves to "overdue" and an operator
-resends it or closes it by hand; that happens at an unpredictable time, and until it does the
-two ledgers stay out of balance. Return `OK` within 24 hours.
+After 24 hours retries stop and the refund moves to "overdue", to be resent or closed by an
+operator at an unspecified time.

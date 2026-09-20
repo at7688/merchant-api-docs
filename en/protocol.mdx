@@ -125,15 +125,12 @@ Outcome is `code`.
 
 | Status | Meaning |
 |---|---|
-| `200` | The request was processed. **Read `code` for the outcome** — a 2xx does not mean success |
+| `200` | The request was processed. Read `code` for the outcome |
 | `404` | Unknown path |
 | `500` | Outcome undetermined; the body may not be JSON |
 
 <Warning>
-**Every** `code` in these docs — including `PARAM_INVALID`, `TOO_MANY_REQUESTS`,
-`IP_NOT_ALLOWED`, `DECRYPT_FAILED` and all business codes — is returned with **HTTP 200**
-inside the envelope. An integration that branches on HTTP status alone, or that only backs off
-on 4xx/429, will treat every error as a success.
+Every `code` in these docs, `PARAM_INVALID` and `TOO_MANY_REQUESTS` included, is returned with **HTTP 200**.
 </Warning>
 
 HTTP 500 means the outcome is undetermined. Transfers: `/transfer/check` with the same `sn`. Seamless: merchant ledger and `/bet_rec/query`. Reversals must not be assumed.

@@ -9,10 +9,10 @@ description: 平台对商户的回调。超时 15 秒。
 成功时 `code` 为 `OK`。
 </Warning>
 
-超时 15 秒。当时不立即重发同一封包。之后仍可能对**同一 `sn`** 再发 `/player/win` 或 `/player/refund`（结算重试、值班补送、卡住注退款）。一个例外：**锦标赛**派彩失败后**不会自动重送，值班也无法补送**，只能于系统外人工处理。赠送旋转消耗时不发 `/player/bet`，结算仍可能 `/player/win`（`amount` 可为 0）。`bet`／`win`／`refund` 的 `acc` 不含前缀；仅 `balance` 同时给完整 `acc` 与 `player_acc`。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
+超时 15 秒。当时不立即重发同一封包。之后仍可能对**同一 `sn`** 再发 `/player/win` 或 `/player/refund`（结算重试、值班补送、卡住注退款）。例外：**锦标赛**派彩失败后不自动重送，值班亦无法补送。赠送旋转消耗时不发 `/player/bet`，结算仍可能 `/player/win`（`amount` 可为 0）。`bet`／`win`／`refund` 的 `acc` 不含前缀；仅 `balance` 同时给完整 `acc` 与 `player_acc`。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
 
 <Warning>
-`sn` 去重记录请**至少保留 90 天**，不得设置短期 TTL。值班补送没有时效上限，一笔数日甚至数周前超时的 `win`／`refund` 可能今天才重送；若去重记录已过期，商户会把它当成新交易而重复入账。平台自身的注单生命周期保留 60 天。
+`sn` 去重记录至少保留 **90 天**。值班补送无时效上限。
 </Warning>
 
 ## POST `{base}/player/balance`
@@ -56,7 +56,7 @@ description: 平台对商户的回调。超时 15 秒。
 
 ## POST `{base}/player/win`
 
-加款。`game_code` 有三种来源，**并非每一笔都对得到 `/game/list`**：
+加款。`game_code` 有三种来源：
 
 | `game_code` | `sn` 形式 | 是否有前置 `/player/bet` | 对账方式 |
 |---|---|---|---|
@@ -65,8 +65,7 @@ description: 平台对商户的回调。超时 15 秒。
 | [`SCRATCH_CARD`](/zh-CN/enums#game-code) | `SC_{票券id}` | 无 | [`/scratch_card_rec/list`](/zh-CN/records) |
 
 <Warning>
-请勿以 `/game/list` 做白名单而拒收 `TOURNAMENT`／`SCRATCH_CARD`；也不要因为
-`/bet_rec/query` 查不到这两类 `sn` 就判定为无效派彩——它们本来就不在注单里。
+`TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 内，亦不在 `/bet_rec/query` 内；不得据此拒收。
 </Warning>
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
@@ -115,10 +114,7 @@ description: 平台对商户的回调。超时 15 秒。
 
 ### 重试与时限
 
-未收到 `OK` 时平台会对**同一 `sn`** 自动重送：首次间隔 60 秒，之后指数退避（60 × 2^n 秒），
-单次间隔上限 1 小时，**总时限 24 小时**。24 小时内同一笔可能被重打十余次，请据此设置
-去重记录与告警阈值。
+未收到 `OK` 时对**同一 `sn`** 自动重送：首次 60 秒，指数退避（60 × 2^n 秒），单次间隔上限
+1 小时，总时限 **24 小时**。
 
-超过 24 小时仍未成功者，平台**停止自动重送**，该笔转为「超时待处理」，改由值班在后台
-重送或人工结案——补送时间不可预期，且在完成前双方账目会一直有差额。请务必在 24 小时内
-回 `OK`。
+逾 24 小时停止自动重送，转为「超时待处理」，改由值班重送或人工结案，时间不定。

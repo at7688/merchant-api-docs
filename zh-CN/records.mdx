@@ -9,7 +9,7 @@ description: 注单、JP、报表、刮刮卡。
 
 | 接口 | `start_at`／`end_at` 对应 |
 |---|---|
-| `/bet_rec/list` | `updated_at`（含结算）。另以**下注日**（`beted_date`，UTC+8 当日 00:00）裁切，须落在「区间起日的前一天」到「区间结束日」之间。因此下注超过一天后才变动的单**查不到**，需改用 `/bet_rec/query` 按单号查 |
+| `/bet_rec/list` | `updated_at`（含结算）。另以下注日（`beted_date`，UTC+8 当日 00:00）裁切，须介于区间起日前一天至区间结束日。下注逾一天后才变动的单不在结果内，改用 `/bet_rec/query` 按单号查 |
 | `/jp_rec/list` | `created_at` |
 | `/bet_report/list` | `beted_date` 或 `settled_date`／分钟，值为 UTC+8（`Asia/Shanghai`）当日 00:00 的 Unix 秒 |
 | `/scratch_card_rec/list` | `updated_at` |
@@ -63,19 +63,16 @@ description: 注单、JP、报表、刮刮卡。
 ## POST `/bet_report/list`
 
 <Warning>
-**汇总数据只保留 60 天。** 查更早的区间会返回 `code` 为 `OK`、`row_count` 为 0 的空列表，
-不是错误——看起来像「那段期间没有投注」。需要更早的数据请自行留存。
-`/bet_rec/list` 的来源表不在清理范围，不受此限。
+汇总数据保留 **60 天**，更早的区间返回空列表（`code` 为 `OK`、`row_count` 为 0）。
+`/bet_rec/list` 不受此限。
 </Warning>
 
-`time_unit` 两个轴的**统计母体不同**，不应互相加总或对账：
+`time_unit` 两轴的统计母体不同，不应互相加总或对账：
 
 | `time_unit` | 涵盖的注单 |
 |---|---|
-| `bet` | 该期间所有落库注单，**含未结算与已退款**（其 `win_amount`／`result` 为 0） |
-| `settle` | **仅已结算（`FINISH`）** 注单 |
-
-同一段期间 `bet` 轴的 `bet_count`／`bet_amount` 会大于 `settle` 轴，这是预期的。
+| `bet` | 该期间所有落库注单，含未结算与已退款（其 `win_amount`／`result` 为 0） |
+| `settle` | 仅已结算（`FINISH`）注单 |
 
 请求：`report_unit`（[汇总周期](/zh-CN/enums#report-unit)）、`time_unit`（[时间轴](/zh-CN/enums#time-unit)）。
 
@@ -94,6 +91,6 @@ description: 注单、JP、报表、刮刮卡。
 `list[]`：`sn`（`SC_{id}`）、`activity_name`、`card_code`、`card_name`、`prize_level`、`prize_amount`、`status`（[刮刮卡状态](/zh-CN/enums#scratch-status)）、`player_acc`、`member`（可为 null）、`claimed_at`、`scratched_at`。请求可选 `lang`（[语系](/zh-CN/enums#lang)）。
 
 `summary`：`total_count`（integer），以及 `pending_count`、`claimed_count`、`scratched_count`、
-`total_prize`、`scratched_prize`（已派奖金）——后五个是**字符串不是 number**
-（例如 `"pending_count": "1"`、`"total_prize": "150.5000"`，小数四位），且区间内一张票都没有时，
-三个 `*_count` 会是**空字符串** `""`。请按字符串解析后自行转数值。
+`total_prize`、`scratched_prize`（已派奖金）——后五个为**字符串**
+（例如 `"pending_count": "1"`、`"total_prize": "150.5000"`）；区间内无票券时，
+三个 `*_count` 为空字符串 `""`。
