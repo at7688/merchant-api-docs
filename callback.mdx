@@ -23,7 +23,7 @@ description: 平台對商戶之回調。Timeout 15 秒。
 |---|---|
 | `/player/bet` 結果未決 | `/player/refund`（自動或值班補送） |
 | `/player/win` 未成功（一般注單） | 稍後再發 `/player/win`（遊戲重送或值班補送） |
-| `/player/win` 未成功（錦標賽派彩） | 不自動重送，值班亦無法補送 |
+| `/player/win` 未成功（錦標賽派彩） | 不自動重送，由值班補送（商戶以錯誤 `code` 拒絕者不補送） |
 | 注單卡住逾時後取消 | `/player/refund` |
 
 玩家離線後仍可能收到 `/player/win`。贈送旋轉消耗時**不發** `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。
