@@ -9,7 +9,7 @@ description: 注單、JP、報表、刮刮卡。
 
 | 接口 | `start_at`／`end_at` 對應 |
 |---|---|
-| `/bet_rec/list` | `updated_at`（異動時間，含結算）。僅用下注時間會漏掉「區間內才結算」的單 |
+| `/bet_rec/list` | `updated_at`（異動時間，含結算）。另有下限：**下注日須在區間起日前一天之後**，下注超過一天才異動的單查不到，需改用 `/bet_rec/query` 依單號查 |
 | `/jp_rec/list` | `created_at` |
 | `/bet_report/list` | `beted_date` 或 `settled_date`／分鐘欄，值為 UTC+8（`Asia/Shanghai`）當日 00:00 之 Unix 秒 |
 | `/scratch_card_rec/list` | `updated_at`（狀態變更時間） |
@@ -74,8 +74,8 @@ description: 注單、JP、報表、刮刮卡。
 | `player_acc` | string | 不含前綴 |
 | `bet_amount` | number | 投注額 |
 | `win_amount` | number | 派彩額 |
-| `valid_amount` | number | 有效投注 |
-| `result` | number | 輸贏（派彩 − 投注） |
+| `valid_amount` | number | 有效投注。未結算（`PENDING`）與退款（`REFUND`）注單一律為 0 |
+| `result` | number | 輸贏。已結算（`FINISH`）為派彩 − 投注；未結算與退款注單一律為 0（**不是** −投注額） |
 | `free_game_type` | string | [免費遊戲](/enums#free-game-type) |
 | `beted_at` | integer | 下注時間，Unix 秒 |
 | `settled_at` | integer | 結算時間，Unix 秒；未結算可為 0 |
@@ -150,6 +150,21 @@ description: 注單、JP、報表、刮刮卡。
 </Card>
 
 ## POST `/bet_report/list`
+
+<Warning>
+**彙總資料只保留 60 天。** 查更早的區間會回 `code` 為 `OK`、`row_count` 為 0 的空清單，
+不是錯誤——看起來像「那段期間沒有投注」。需要更早的資料請自行留存。
+`/bet_rec/list` 的來源表不在清理範圍，不受此限。
+</Warning>
+
+`time_unit` 兩個軸的**統計母體不同**，不應互相加總或對帳：
+
+| `time_unit` | 涵蓋的注單 |
+|---|---|
+| `bet` | 該期間所有落庫注單，**含未結算與已退款**（其 `win_amount`／`result` 為 0） |
+| `settle` | **僅已結算（`FINISH`）** 注單 |
+
+同一段期間 `bet` 軸的 `bet_count`／`bet_amount` 會大於 `settle` 軸，這是預期的。
 
 <Card title="請求" icon="arrow-up-from-bracket">
 | 欄位 | 必填 | 型別 | 說明 |
@@ -258,10 +273,16 @@ description: 注單、JP、報表、刮刮卡。
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `total_count` | number | 票數 |
-| `pending_count` | number | 未領取 |
-| `claimed_count` | number | 已領未刮 |
-| `scratched_count` | number | 已刮 |
-| `total_prize` | number | 獎金合計 |
-| `scratched_prize` | number | 已派獎金（對帳數） |
+| `total_count` | integer | 票數 |
+| `pending_count` | string | 未領取（十進位數字字串） |
+| `claimed_count` | string | 已領未刮（十進位數字字串） |
+| `scratched_count` | string | 已刮（十進位數字字串） |
+| `total_prize` | string | 獎金合計（十進位數字字串，**四位**小數） |
+| `scratched_prize` | string | 已派獎金，對帳數（十進位數字字串，**四位**小數） |
+
+<Warning>
+除 `total_count` 外，其餘五個欄位是**字串**不是 number（例如 `"pending_count": "3"`、
+`"total_prize": "150.5000"`，小數四位）。區間內一張票都沒有時，三個 `*_count` 會是**空字串** `""`。
+請以字串解析後自行轉數值，不要用強型別直接映射成數字。
+</Warning>
 </Card>

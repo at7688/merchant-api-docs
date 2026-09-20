@@ -25,6 +25,11 @@ Select a wallet model. Encryption and the response envelope are shared; funding 
 
 Source IPs must appear on the merchant whitelist or the response is `IP_NOT_ALLOWED`.
 
+The whitelist is an **exact, per-address string match**. CIDR ranges are not supported
+(`1.2.3.0/24` has no effect). Register every egress address individually — with a NAT pool,
+list the whole pool. An IPv6 entry must match the source address **literally**; a different
+abbreviation of the same address does not match.
+
 ## Credentials
 
 | Field | Description |

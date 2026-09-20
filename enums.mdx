@@ -60,9 +60,10 @@ description: 商戶 API 封閉字串。
 
 | 代碼 | 說明 |
 |---|---|
-| `TOURNAMENT` | 錦標賽 |
+| `TOURNAMENT` | 錦標賽派彩 |
+| `SCRATCH_CARD` | 刮刮卡派彩 |
 
-其餘以 `/game/list` 之 `code` 為準。
+其餘以 `/game/list` 之 `code` 為準。這兩個代碼**不在** `/game/list` 裡，請勿用該清單做白名單而拒收。
 
 ## 帳號類型 `player_type` {#player-type}
 
@@ -70,16 +71,6 @@ description: 商戶 API 封閉字串。
 |---|---|
 | `AGENT` | 商戶代理 |
 | `MEMBER` | 玩家 |
-
-## 子角色 `sub_role` {#sub-role}
-
-| 代碼 | 說明 |
-|---|---|
-| （空字串） | 未分子角色 |
-| `ALL` | 全部 |
-| `CS` | 客服 |
-| `FINANCE` | 財務 |
-| `OPS` | 營運 |
 
 ## 注單 `status` {#bet-status}
 

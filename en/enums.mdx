@@ -60,9 +60,10 @@ Error codes: [Error codes](/en/errors).
 
 | Code | Meaning |
 |---|---|
-| `TOURNAMENT` | Tournament |
+| `TOURNAMENT` | Tournament payout |
+| `SCRATCH_CARD` | Scratch-card payout |
 
-Other values: `/game/list` `code`.
+Other values: `/game/list` `code`. These two are **not** in `/game/list` — do not reject a payout because its `game_code` is absent from that list.
 
 ## Account type `player_type` {#player-type}
 
@@ -70,16 +71,6 @@ Other values: `/game/list` `code`.
 |---|---|
 | `AGENT` | Merchant agent |
 | `MEMBER` | Player |
-
-## Sub-role `sub_role` {#sub-role}
-
-| Code | Meaning |
-|---|---|
-| (empty string) | No sub-role |
-| `ALL` | All |
-| `CS` | Customer service |
-| `FINANCE` | Finance |
-| `OPS` | Operations |
 
 ## Bet `status` {#bet-status}
 

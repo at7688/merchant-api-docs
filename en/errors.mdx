@@ -5,6 +5,14 @@ description: Success value is only OK.
 
 `code` `OK` denotes success. Any other value denotes failure. `data` is `null` on most errors.
 
+<Warning>
+`ACC_NOT_ACTIVE` and `ACC_SUSPEND` appear in both tables with opposite meanings. The
+**merchant-level** one (the whole merchant is stopped, so every endpoint fails) comes from
+authentication and carries an object with `agent` in `data`; the **player-level** one (that
+player only) comes from `/player/login` with `data` `null`. Distinguish on `data`, not on
+`code` alone.
+</Warning>
+
 ## Transport and authentication
 
 | code | Definition | Handling |
@@ -14,14 +22,14 @@ description: Success value is only OK.
 | `API_KEY_INVALID` | ApiKey missing or not 32 bytes | Verify the key |
 | `DATA_FORMAT_INVALID` | `data` is not hex | Verify encoding |
 | `DECRYPT_FAILED` | Decrypt failed | Verify key, nonce layout, JSON |
-| `PARAM_INVALID` | Inner validation failed | Required fields, types, Unix seconds |
+| `PARAM_INVALID` | Malformed request: **outer or inner** JSON unparseable, wrong field type, or failed validation | Check the outer `{agent_acc, data}` is valid JSON with correct types (`agent_acc` must be a string) before checking inner required fields, types, Unix seconds |
 | `IP_BLOCKED` | IP or country blocked | Change source or request unblock |
-| `ACC_NOT_ACTIVE` | Merchant inactive | Stop |
-| `ACC_SUSPEND` | Merchant suspended | Stop |
-| `TOO_MANY_REQUESTS` | List rate exceeded (10 / merchant / minute) | Reduce frequency |
-| `INTERNAL_SERVER_ERROR` | Fault (with HTTP 500) | Outcome undetermined |
+| `ACC_NOT_ACTIVE` | **Merchant** inactive (`data` carries `{agent, status}`) | Stop |
+| `ACC_SUSPEND` | **Merchant** suspended (`data` carries `{agent, current_status}`) | Stop |
+| `TOO_MANY_REQUESTS` | Rate exceeded. Only `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list` and `/scratch_card_rec/list` are rate-limited (10 / merchant / minute) | Reduce frequency |
+| `INTERNAL_SERVER_ERROR` | Fault (with HTTP 500). **May occur mid-transaction**, e.g. after a balance has already changed | Outcome undetermined (see below); do not record it as a failure |
 
-Retry may reuse the original parameters. Transfer `sn` must not be replaced for these codes.
+Except for `INTERNAL_SERVER_ERROR`, these errors occur before the request reaches business logic. Retry may reuse the original parameters. Transfer `sn` must not be replaced for these codes.
 
 ## Business
 
@@ -29,13 +37,13 @@ Retry may reuse the original parameters. Transfer `sn` must not be replaced for 
 |---|---|---|
 | `ACC_EXIST` | Player already exists | Treat as created |
 | `ACC_NOT_FOUND` | Player does not exist | `/player/add`; no extra prefix |
-| `ACC_NOT_ACTIVE` | Player inactive | Deny game entry |
-| `ACC_SUSPEND` | Player suspended | Deny game entry |
+| `ACC_NOT_ACTIVE` | **Player** inactive (`data` is `null`) | Deny game entry |
+| `ACC_SUSPEND` | **Player** suspended (`data` is `null`) | Deny game entry |
 | `BALANCE_INSUFFICIENT` | Insufficient balance | Transfer: credit first. Seamless bet: return this code |
 | `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
 | `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, requery; then a new `sn` is allowed |
 | `GAME_NOT_FOUND` | Invalid game code | `/game/list` |
-| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet | Item `code`; found items use `OK`. Envelope remains `OK`. Do not auto-refund |
+| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet | Item `code`; found items use `OK`. Envelope remains `OK`. Do not auto-refund. Payouts whose `sn` starts with `TOUR_` or `SC_` are not bets, so this is expected for them (see [callbacks](/en/callback)) |
 | `GAME_MAINTAIN` | Maintenance | Defer entry |
 | `BET_AMOUNT_RANGE` | Stake outside min/max | Adjust amount |
 | `FREE_ROUND_CAP` | Monthly grant cap exceeded | Do not resubmit the batch |

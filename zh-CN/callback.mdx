@@ -9,7 +9,11 @@ description: 平台对商户的回调。超时 15 秒。
 成功时 `code` 为 `OK`。
 </Warning>
 
-超时 15 秒。当时不立即重发同一封包。之后仍可能对**同一 `sn`** 再发 `/player/win` 或 `/player/refund`（结算重试、值班补送、卡住注退款）。赠送旋转消耗时不发 `/player/bet`，结算仍可能 `/player/win`（`amount` 可为 0）。`bet`／`win`／`refund` 的 `acc` 不含前缀；仅 `balance` 同时给完整 `acc` 与 `player_acc`。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
+超时 15 秒。当时不立即重发同一封包。之后仍可能对**同一 `sn`** 再发 `/player/win` 或 `/player/refund`（结算重试、值班补送、卡住注退款）。一个例外：**锦标赛**派彩失败后**不会自动重送，值班也无法补送**，只能于系统外人工处理。赠送旋转消耗时不发 `/player/bet`，结算仍可能 `/player/win`（`amount` 可为 0）。`bet`／`win`／`refund` 的 `acc` 不含前缀；仅 `balance` 同时给完整 `acc` 与 `player_acc`。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
+
+<Warning>
+`sn` 去重记录请**至少保留 90 天**，不得设置短期 TTL。值班补送没有时效上限，一笔数日甚至数周前超时的 `win`／`refund` 可能今天才重送；若去重记录已过期，商户会把它当成新交易而重复入账。平台自身的注单生命周期保留 60 天。
+</Warning>
 
 ## POST `{base}/player/balance`
 
@@ -52,14 +56,25 @@ description: 平台对商户的回调。超时 15 秒。
 
 ## POST `{base}/player/win`
 
-加款。锦标赛 `game_code` 见 [`TOURNAMENT`](/zh-CN/enums#game-code)。
+加款。`game_code` 有三种来源，**并非每一笔都对得到 `/game/list`**：
+
+| `game_code` | `sn` 形式 | 是否有前置 `/player/bet` | 对账方式 |
+|---|---|---|---|
+| `/game/list` 的 `code` | 注单单号 | 有 | `/bet_rec/query` |
+| [`TOURNAMENT`](/zh-CN/enums#game-code) | `TOUR_{赛事id}_{名次}_{会员id}` | 无 | 目前无查询接口，以商户自身账本为准 |
+| [`SCRATCH_CARD`](/zh-CN/enums#game-code) | `SC_{票券id}` | 无 | [`/scratch_card_rec/list`](/zh-CN/records) |
+
+<Warning>
+请勿以 `/game/list` 做白名单而拒收 `TOURNAMENT`／`SCRATCH_CARD`；也不要因为
+`/bet_rec/query` 查不到这两类 `sn` 就判定为无效派彩——它们本来就不在注单里。
+</Warning>
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `timestamp` | integer | Unix 秒 |
 | `sn` | string | 幂等键 |
-| `game_code` | string | 游戏代码，或 [锦标赛](/zh-CN/enums#game-code) |
+| `game_code` | string | 游戏代码、[`TOURNAMENT`](/zh-CN/enums#game-code) 或 [`SCRATCH_CARD`](/zh-CN/enums#game-code)，见上表 |
 | `acc` | string | 不含前缀 |
 | `name` | string | 显示名称 |
 | `amount` | number | 增加额，≥ 0（含未中奖） |
@@ -97,3 +112,13 @@ description: 平台对商户的回调。超时 15 秒。
 <Warning>
 `refund` 仅退回同一 `sn` 的 `/player/bet` 实际扣下的金额。商户从未收到该 `sn` 的 bet，或曾以错误 `code` 拒绝，须回 `OK` 且不得加款。平台在 bet 结果未决时即发 `refund`，该 bet 可能从未到达商户。
 </Warning>
+
+### 重试与时限
+
+未收到 `OK` 时平台会对**同一 `sn`** 自动重送：首次间隔 60 秒，之后指数退避（60 × 2^n 秒），
+单次间隔上限 1 小时，**总时限 24 小时**。24 小时内同一笔可能被重打十余次，请据此设置
+去重记录与告警阈值。
+
+超过 24 小时仍未成功者，平台**停止自动重送**，该笔转为「超时待处理」，改由值班在后台
+重送或人工结案——补送时间不可预期，且在完成前双方账目会一直有差额。请务必在 24 小时内
+回 `OK`。

@@ -49,6 +49,15 @@ description: 发放、取消、查询。
 
 ## POST `/free_round/list`
 
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `page` | 是 | integer | ≥ 1 |
+| `perpage` | 是 | integer | 1–100 |
+| `acc` | 否 | string | 筛选玩家 |
+| `start_at` / `end_at` | 否 | integer | Unix 秒 |
+</Card>
+
 <Card title="响应" icon="arrow-down-to-bracket">
 `row_count`、`page_count`，`list[]`：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
 </Card>

@@ -24,7 +24,7 @@ description: Envelope, AES-256-GCM, HTTP vs code.
 | Time | Unix **seconds**. Accounting day cut is **UTC+8** (`Asia/Shanghai`) 00:00 |
 | Amounts | JSON numbers, up to 2 decimal places |
 | Optional filters | Empty string or 0 means “do not apply” |
-| Validation failure | `code` `PARAM_INVALID` |
+| Malformed request | Outer or inner JSON unparseable, wrong field type, or failed validation — all return `PARAM_INVALID` |
 
 Callback URL is `{MerchantApiUrl}/player/bet`. The base must **not** end with `/`.
 
@@ -116,9 +116,24 @@ All successful merchant APIs use this envelope. Per-endpoint `data` fields are o
 | `api_version` | string | Currently `v1` |
 | `message` | string | Extra text; usually empty |
 | `code` | string | Outcome. Success is only `OK` |
-| `data` | object \| array \| null | Payload on success; usually `null` on error |
+| `data` | object \| array \| null | Payload on success; usually `null` on error, though a few errors carry a diagnostic object (see [errors](/en/errors)) |
 | `trace_id` | string | Request id for logs and incidents |
 
 Outcome is `code`.
 
-Unknown path: HTTP 404. HTTP 500 means the outcome is undetermined; the body may not be JSON. Transfers: `/transfer/check` with the same `sn`. Seamless: merchant ledger and `/bet_rec/query`. Reversals must not be assumed.
+### HTTP status
+
+| Status | Meaning |
+|---|---|
+| `200` | The request was processed. **Read `code` for the outcome** — a 2xx does not mean success |
+| `404` | Unknown path |
+| `500` | Outcome undetermined; the body may not be JSON |
+
+<Warning>
+**Every** `code` in these docs — including `PARAM_INVALID`, `TOO_MANY_REQUESTS`,
+`IP_NOT_ALLOWED`, `DECRYPT_FAILED` and all business codes — is returned with **HTTP 200**
+inside the envelope. An integration that branches on HTTP status alone, or that only backs off
+on 4xx/429, will treat every error as a success.
+</Warning>
+
+HTTP 500 means the outcome is undetermined. Transfers: `/transfer/check` with the same `sn`. Seamless: merchant ledger and `/bet_rec/query`. Reversals must not be assumed.

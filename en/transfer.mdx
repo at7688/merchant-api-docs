@@ -54,11 +54,14 @@ HTTP 500: `/transfer/check` with the original `sn`.
 | `member` | object | Player profile |
 
 Missing: `TRANSFER_NOT_FOUND`.
+
+| code | Definition | Handling |
+|---|---|---|
+| `TRANSFER_NOT_FOUND` | No such transfer | After an HTTP 500, requery; only then may a new `sn` be used |
+| `ACC_NOT_FOUND` | The `acc` used for the query matches no player | **The query is invalid — it does not mean the transfer was not posted.** Requery with the same `acc` as the original `/transfer/add`; do **not** resend under a new `sn`, or you may post it twice |
 </Card>
 
 ## POST `/transfer/list`
-
-10 calls / merchant / minute.
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
@@ -88,4 +91,3 @@ Missing: `TRANSFER_NOT_FOUND`.
 | `name` | string | Display name |
 | `player_type` | string | [Account type](/en/enums#player-type) |
 | `currency` | string | [Currency](/en/enums#currency) |
-| `sub_role` | string | [Sub-role](/en/enums#sub-role) |

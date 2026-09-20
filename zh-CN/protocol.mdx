@@ -24,7 +24,7 @@ description: 报文、AES-256-GCM、HTTP 与 code。
 | 时间 | Unix **秒**。账务日界为 **UTC+8**（`Asia/Shanghai`）当日 00:00 |
 | 金额 | JSON number，小数最多两位 |
 | 选填筛选 | 空字符串或 0 表示不套该条件 |
-| 验证失败 | `code` 为 `PARAM_INVALID` |
+| 请求不合格 | 外层或内层 JSON 无法解析、字段类型不对、或字段验证未通过，一律 `PARAM_INVALID` |
 
 回调 base 与路径直接拼接：`{MerchantApiUrl}/player/bet`。base **不得**以 `/` 结尾。
 
@@ -111,9 +111,23 @@ def encrypt(plain: str, key_hex: str) -> str:
 | `api_version` | string | 当前为 `v1` |
 | `message` | string | 附加说明，多为空字符串 |
 | `code` | string | 业务结果。成功仅为 `OK` |
-| `data` | object \| array \| null | 成功时的数据本体。错误时多为 `null` |
+| `data` | object \| array \| null | 成功时的数据本体。错误时多为 `null`，少数错误会带诊断对象（见 [错误码](/zh-CN/errors)） |
 | `trace_id` | string | 本次请求标识 |
 
 成功与否以 `code` 为准。
 
-路径不存在为 HTTP 404。HTTP 500 表示结果未决，body 未必为 JSON：转账须以同一 `sn` 调用 `/transfer/check`；单一钱包须以商户账本及 `/bet_rec/query` 核对，不得径行冲正。
+### HTTP 状态
+
+| 状态 | 含义 |
+|---|---|
+| `200` | 请求已被处理。**成功与否一律读 `code`**，不得因为是 2xx 就当成功 |
+| `404` | 路径不存在 |
+| `500` | 结果未决，body 未必为 JSON |
+
+<Warning>
+本文档列出的**所有** `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`、`IP_NOT_ALLOWED`、
+`DECRYPT_FAILED` 以及全部业务码）都以 **HTTP 200** 搭配信封返回。只看 HTTP 状态、
+或只在 4xx／429 才退避重试的实现，会把每一个错误都当成成功。
+</Warning>
+
+HTTP 500 表示结果未决：转账须以同一 `sn` 调用 `/transfer/check`；单一钱包须以商户账本及 `/bet_rec/query` 核对，不得径行冲正。

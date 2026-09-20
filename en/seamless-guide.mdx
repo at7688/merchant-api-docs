@@ -13,7 +13,7 @@ Shared spec: [Protocol](/en/protocol), [Error codes](/en/errors). Callback spec:
 2. Implement encrypt (merchant → platform) and decrypt (callbacks). Same key.
 3. `POST /player/add`, `POST /player/login`. `acc` excludes the agent prefix.
 4. Implement `/player/balance`, `/player/bet`, `/player/win`, `/player/refund`. Success: `code` is `OK`. Timeout 15 seconds.
-5. Enforce idempotency on `sn`. The same `sn` may receive a later win/refund. Return the first result if already processed. Accept `/player/win` after disconnect. Granted spins skip bet and may still win.
-6. Reconciliation: `/bet_rec/query`. Item `BET_NOT_FOUND` must not trigger an automatic refund.
+5. Enforce idempotency on `sn`, keeping de-duplication records for **at least 90 days** (operator resends have no deadline — a weeks-old item can be resent today). The same `sn` may receive a later win/refund. Return the first result if already processed. Accept `/player/win` after disconnect. Granted spins skip bet and may still win.
+6. Reconciliation: `/bet_rec/query`, which **covers bets only**. Reconcile an `sn` starting with `SC_` (scratch-card payout) through `/scratch_card_rec/list`; one starting with `TOUR_` (tournament payout) has no query endpoint — use your own ledger. Item `BET_NOT_FOUND` must not trigger an automatic refund.
 
 Next: [Players](/en/player), [Callbacks](/en/callback), [Records](/en/records), [Granted spins](/en/free-round).

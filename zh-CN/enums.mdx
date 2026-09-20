@@ -60,9 +60,10 @@ description: 商户 API 封闭字符串。
 
 | 代码 | 说明 |
 |---|---|
-| `TOURNAMENT` | 锦标赛 |
+| `TOURNAMENT` | 锦标赛派彩 |
+| `SCRATCH_CARD` | 刮刮卡派彩 |
 
-其余以 `/game/list` 的 `code` 为准。
+其余以 `/game/list` 的 `code` 为准。这两个代码**不在** `/game/list` 里，请勿用该清单做白名单而拒收。
 
 ## 账号类型 `player_type` {#player-type}
 
@@ -70,16 +71,6 @@ description: 商户 API 封闭字符串。
 |---|---|
 | `AGENT` | 商户代理 |
 | `MEMBER` | 玩家 |
-
-## 子角色 `sub_role` {#sub-role}
-
-| 代码 | 说明 |
-|---|---|
-| （空字符串） | 未分子角色 |
-| `ALL` | 全部 |
-| `CS` | 客服 |
-| `FINANCE` | 财务 |
-| `OPS` | 运营 |
 
 ## 注单 `status` {#bet-status}
 

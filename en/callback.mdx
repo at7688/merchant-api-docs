@@ -9,7 +9,11 @@ Seamless wallet only. Platform `POST`s to `{MerchantApiUrl}{path}` (e.g. `https:
 Success: `code` is `OK`.
 </Warning>
 
-Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`** may later receive another `/player/win` or `/player/refund` (settle retry, operator resend, stuck-bet refund). Granted-spin consumption does **not** send `/player/bet`; settle may still send `/player/win` (`amount` may be 0). `acc` on bet/win/refund is unprefixed; only the balance callback sends both prefixed `acc` and `player_acc`. Idempotency on `sn`. `/player/win` may arrive after disconnect.
+Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`** may later receive another `/player/win` or `/player/refund` (settle retry, operator resend, stuck-bet refund). One exception: a failed **tournament** payout is **never retried automatically and cannot be resent by an operator** — it is handled outside the system. Granted-spin consumption does **not** send `/player/bet`; settle may still send `/player/win` (`amount` may be 0). `acc` on bet/win/refund is unprefixed; only the balance callback sends both prefixed `acc` and `player_acc`. Idempotency on `sn`. `/player/win` may arrive after disconnect.
+
+<Warning>
+Keep `sn` de-duplication records for **at least 90 days**; do not use a short TTL. Operator resends have no deadline — a `win` or `refund` that timed out days or weeks ago may be resent today, and an expired de-duplication record means the merchant credits it twice. The platform's own bet lifecycle is kept for 60 days.
+</Warning>
 
 ## POST `{base}/player/balance`
 
@@ -52,14 +56,26 @@ Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`*
 
 ## POST `{base}/player/win`
 
-Credit. Tournament `game_code`: [`TOURNAMENT`](/en/enums#game-code).
+Credit. `game_code` comes from three sources — **not every payout maps to `/game/list`**:
+
+| `game_code` | `sn` shape | Preceding `/player/bet` | Reconcile with |
+|---|---|---|---|
+| a `/game/list` `code` | bet id | yes | `/bet_rec/query` |
+| [`TOURNAMENT`](/en/enums#game-code) | `TOUR_{tournament}_{rank}_{member}` | no | no query endpoint; use your own ledger |
+| [`SCRATCH_CARD`](/en/enums#game-code) | `SC_{ticket}` | no | [`/scratch_card_rec/list`](/en/records) |
+
+<Warning>
+Do not reject `TOURNAMENT` or `SCRATCH_CARD` payouts because their `game_code` is absent from
+`/game/list`, and do not treat them as invalid because `/bet_rec/query` returns
+`BET_NOT_FOUND` — neither one is a bet.
+</Warning>
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `timestamp` | integer | Unix seconds |
 | `sn` | string | Idempotency key |
-| `game_code` | string | Game, or [tournament](/en/enums#game-code) |
+| `game_code` | string | Game, [`TOURNAMENT`](/en/enums#game-code) or [`SCRATCH_CARD`](/en/enums#game-code) — see above |
 | `acc` | string | Unprefixed |
 | `name` | string | Display name |
 | `amount` | number | Credit, ≥ 0 (including no win) |
@@ -97,3 +113,14 @@ Credit. Tournament `game_code`: [`TOURNAMENT`](/en/enums#game-code).
 <Warning>
 `refund` only returns what the `/player/bet` with the same `sn` actually debited. If the merchant never received that bet, or rejected it with an error `code`, it must return `OK` without crediting. The platform sends `refund` as soon as a bet's outcome is unknown, so the bet may never have reached the merchant.
 </Warning>
+
+### Retries and deadline
+
+Until it receives `OK`, the platform retries the **same `sn`**: first after 60 seconds, then
+exponential backoff (60 × 2^n seconds) capped at 1 hour per interval, with a **24-hour total
+deadline**. A single refund may be retried a dozen or more times within that window — size your
+de-duplication records and alert thresholds accordingly.
+
+After 24 hours the platform **stops retrying**. The refund moves to "overdue" and an operator
+resends it or closes it by hand; that happens at an unpredictable time, and until it does the
+two ledgers stay out of balance. Return `OK` within 24 hours.
