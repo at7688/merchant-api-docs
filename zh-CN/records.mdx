@@ -9,7 +9,7 @@ description: 注单、JP、报表、刮刮卡。
 
 | 接口 | `start_at`／`end_at` 对应 |
 |---|---|
-| `/bet_rec/list` | `updated_at`（含结算）。另有下限：**下注日须在区间起日前一天之后**，下注超过一天才变动的单查不到，需改用 `/bet_rec/query` 按单号查 |
+| `/bet_rec/list` | `updated_at`（含结算）。另以**下注日**（`beted_date`，UTC+8 当日 00:00）裁切，须落在「区间起日的前一天」到「区间结束日」之间。因此下注超过一天后才变动的单**查不到**，需改用 `/bet_rec/query` 按单号查 |
 | `/jp_rec/list` | `created_at` |
 | `/bet_report/list` | `beted_date` 或 `settled_date`／分钟，值为 UTC+8（`Asia/Shanghai`）当日 00:00 的 Unix 秒 |
 | `/scratch_card_rec/list` | `updated_at` |

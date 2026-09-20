@@ -9,7 +9,7 @@ Time columns are **not** always bet time:
 
 | Endpoint | `start_at` / `end_at` |
 |---|---|
-| `/bet_rec/list` | `updated_at` (includes settlement). Also bounded: the **bet date must be on or after the day before `start_at`**, so a bet that changes more than a day after it was placed is not returned — look it up by `sn` with `/bet_rec/query` instead |
+| `/bet_rec/list` | `updated_at` (includes settlement). Also pruned by **bet date** (`beted_date`, UTC+8 midnight), which must fall between the day before the window's start day and the window's end day. A bet that changes more than a day after it was placed is therefore **not returned** — look it up by `sn` with `/bet_rec/query` instead |
 | `/jp_rec/list` | `created_at` |
 | `/bet_report/list` | `beted_date` or `settled_date` / minute, Unix seconds at UTC+8 (`Asia/Shanghai`) 00:00 |
 | `/scratch_card_rec/list` | `updated_at` |
