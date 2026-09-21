@@ -3,17 +3,23 @@ title: Callbacks
 description: Platform callbacks. Timeout 15 seconds.
 ---
 
-Seamless wallet only. Platform `POST`s to `{MerchantApiUrl}{path}` (e.g. `https://merchant.example/player/bet`). Base must not end with `/`. Body `{ "data": "<hex>" }` with no `agent_acc`. Same ApiKey. [Protocol](/en/protocol). Timeout 15 seconds. Response JSON must include top-level `code`. bet/win `data.original_balance` and `data.balance` are numbers.
+Seamless wallet only. The platform `POST`s to `{MerchantApiUrl}{path}`, for example `https://merchant.example/player/bet`.
 
-<Warning>
-Success: `code` is `OK`.
-</Warning>
+```json
+{ "data": "<AES-GCM hex>" }
+```
 
-Timeout 15 seconds. The same packet is not retried immediately. The **same `sn`** may later receive another `/player/win` or `/player/refund` (settle retry, operator resend, stuck-bet refund). Exception: a failed **tournament** payout is not retried automatically; an operator resends it, unless the merchant rejected it with an error `code`. Granted-spin consumption does **not** send `/player/bet`; settle may still send `/player/win` (`amount` may be 0). `acc` on bet/win/refund is unprefixed; only the balance callback sends both prefixed `acc` and `player_acc`. Idempotency on `sn`. `/player/win` may arrive after disconnect.
+| Item | Rule |
+|---|---|
+| `MerchantApiUrl` | Concatenated directly with the path. Must not end with `/` |
+| Request body | `data` only. No `agent_acc` |
+| Encryption | Same ApiKey and same layout as the merchant API. See [Protocol](/en/protocol) |
+| `Content-Type` | `application/json` |
+| Timeout | 15 seconds, connect and read included |
+| Merchant response | JSON with a top-level `code`. Success is `OK`. Other top-level fields are ignored |
+| Merchant HTTP status | Must be 2xx. Otherwise the platform treats the outcome as undetermined |
 
-<Warning>
-Keep `sn` de-duplication records for **at least 90 days**. Operator resends have no deadline.
-</Warning>
+Idempotency: [G1](/en/protocol#g1). Resends: [G2](/en/protocol#g2). Undetermined outcome: [G3](/en/protocol#g3).
 
 ## POST `{base}/player/balance`
 
@@ -21,37 +27,50 @@ Keep `sn` de-duplication records for **at least 90 days**. Operator resends have
 | Field | Type | Description |
 |---|---|---|
 | `timestamp` | integer | Unix seconds |
-| `acc` | string | Prefixed |
-| `player_acc` | string | Unprefixed |
+| `acc` | string | Full account, with the agent prefix |
+| `player_acc` | string | Without the prefix |
 </Card>
 
 <Card title="Response" icon="arrow-up-from-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `code` | string | `"OK"` |
-| `data.balance` | number | Merchant-side balance |
+| `code` | string | `"OK"` on success |
+| `data.balance` | number | Current merchant-side balance |
+
+```json
+{ "code": "OK", "data": { "balance": 1680.4 } }
+```
 </Card>
 
 ## POST `{base}/player/bet`
+
+Debit.
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `timestamp` | integer | Unix seconds |
 | `sn` | string | Idempotency key |
-| `game_code` | string | Game |
-| `acc` | string | Unprefixed |
+| `game_code` | string | Game code |
+| `acc` | string | Player account, without the prefix |
 | `name` | string | Display name |
-| `amount` | number | Debit (positive) |
-| `beted_at` | integer | Bet time |
+| `amount` | number | Debit amount (positive) |
+| `beted_at` | integer | Bet time, Unix seconds |
 </Card>
 
 <Card title="Response" icon="arrow-up-from-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `code` | string | `"OK"` or e.g. `BALANCE_INSUFFICIENT` |
-| `data.original_balance` | number | Before debit |
-| `data.balance` | number | After debit |
+| `code` | string | `"OK"` on success. `BALANCE_INSUFFICIENT` when the balance is short |
+| `data.original_balance` | number | Balance before the debit |
+| `data.balance` | number | Balance after the debit |
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 1000, "balance": 900 }
+}
+```
 </Card>
 
 ## POST `{base}/player/win`
@@ -60,63 +79,66 @@ Credit. `game_code` comes from three sources:
 
 | `game_code` | `sn` shape | Preceding `/player/bet` | Reconcile with |
 |---|---|---|---|
-| a `/game/list` `code` | bet id | yes | `/bet_rec/query` |
-| [`TOURNAMENT`](/en/enums#game-code) | `TOUR_{tournament}_{rank}_{member}` | no | no query endpoint; use your own ledger |
-| [`SCRATCH_CARD`](/en/enums#game-code) | `SC_{ticket}` | no | [`/scratch_card_rec/list`](/en/records) |
-
-<Warning>
-`TOURNAMENT` and `SCRATCH_CARD` are in neither `/game/list` nor `/bet_rec/query`; do not reject them on that basis.
-</Warning>
+| A `/game/list` `code` | Bet id | Yes | `/bet_rec/query` |
+| [`TOURNAMENT`](/en/enums#game-code) | `TOUR_{tournament}_{rank}_{member}` | No | No query endpoint. The merchant ledger is authoritative |
+| [`SCRATCH_CARD`](/en/enums#game-code) | `SC_{ticket}` | No | [`/scratch_card_rec/list`](/en/records) |
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `timestamp` | integer | Unix seconds |
 | `sn` | string | Idempotency key |
-| `game_code` | string | Game, [`TOURNAMENT`](/en/enums#game-code) or [`SCRATCH_CARD`](/en/enums#game-code) — see above |
-| `acc` | string | Unprefixed |
+| `game_code` | string | Game code, [`TOURNAMENT`](/en/enums#game-code) or [`SCRATCH_CARD`](/en/enums#game-code). See the table above |
+| `acc` | string | Without the prefix |
 | `name` | string | Display name |
-| `amount` | number | Credit, ≥ 0 (including no win) |
-| `beted_at` / `settled_at` | integer | Unix seconds |
+| `amount` | number | Credit amount, ≥ 0 (including no win) |
+| `beted_at` | integer | Bet time, Unix seconds |
+| `settled_at` | integer | Settlement time, Unix seconds |
 </Card>
 
 <Card title="Response" icon="arrow-up-from-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `code` | string | `"OK"` |
-| `data.original_balance` | number | Before credit |
-| `data.balance` | number | After credit |
+| `data.original_balance` | number | Balance before the credit |
+| `data.balance` | number | Balance after the credit |
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 900, "balance": 1400 }
+}
+```
 </Card>
 
 ## POST `{base}/player/refund`
+
+Returns the amount the `/player/bet` with the same `sn` actually debited.
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `timestamp` | integer | Unix seconds |
-| `sn` | string | Matching bet id |
-| `game_code` | string | Game |
-| `acc` | string | Unprefixed |
+| `sn` | string | Id of the matching bet |
+| `game_code` | string | Game code |
+| `acc` | string | Without the prefix |
 | `name` | string | Display name |
-| `amount` | number | Refund (positive) |
+| `amount` | number | Refund amount (positive) |
 </Card>
 
 <Card title="Response" icon="arrow-up-from-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `code` | string | `"OK"` even if already refunded |
+| `code` | string | `"OK"`. An already refunded `sn` also returns `OK`, and the balance does not change |
 | `data` | object \| omitted | May be omitted |
+
+```json
+{ "code": "OK" }
+```
 </Card>
 
-<Warning>
-`refund` only returns what the `/player/bet` with the same `sn` actually debited. If the merchant never received that bet, or rejected it with an error `code`, it must return `OK` without crediting. The platform sends `refund` as soon as a bet's outcome is unknown, so the bet may never have reached the merchant.
-</Warning>
+## Constraints {#constraints}
 
-### Retries and deadline
-
-Until it receives `OK`, the platform retries the **same `sn`**: first after 60 seconds, then
-exponential backoff (60 × 2^n seconds), capped at 1 hour per interval, with a **24-hour total
-deadline**.
-
-After 24 hours retries stop and the refund moves to "overdue", to be resent or closed by an
-operator at an unspecified time.
+1. `TOURNAMENT` and `SCRATCH_CARD` are in neither `/game/list` nor `/bet_rec/query`. They must not be rejected on that basis.
+2. `/player/refund`: a merchant that never received the bet with that `sn`, or rejected it with an error `code`, returns `OK` and must not credit.
+3. Granted-spin consumption sends no `/player/bet`. Settlement may still send `/player/win` (`amount` may be 0). See [Granted spins](/en/free-round).

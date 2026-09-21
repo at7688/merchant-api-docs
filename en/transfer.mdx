@@ -3,20 +3,29 @@ title: Transfers
 description: Transfer-wallet credit and debit.
 ---
 
-Transfer wallet only. `sn` is unique **per merchant**. Envelope: [Protocol](/en/protocol). `agent` / `member`: end of page. `start_at` / `end_at` on the list API filter `created_at`.
+Applies to the transfer wallet. The outer envelope on success is in [Protocol](/en/protocol). `agent` / `member` object fields are at the end of this page. Idempotency is [G1](/en/protocol#g1), undetermined outcome is [G3](/en/protocol#g3).
+
+| Item | Rule |
+|---|---|
+| `sn` | Alphanumerics plus `_` `-`, 6–120. Unique per merchant |
+| `acc` | Player account, no prefix |
+| `amount` | Not 0. Positive = credit (merchant → platform), negative = debit (platform → merchant) |
+| Time | Unix seconds |
 
 ## POST `/transfer/add`
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `sn` | yes | string | Merchant reference, 6–120, alphanum plus `_` `-` |
-| `acc` | yes | string | Player id, no prefix |
-| `amount` | yes | number | ≠ 0. Positive = credit to platform; negative = debit |
+| `sn` | yes | string | Merchant reference, not reusable for a different operation |
+| `acc` | yes | string | Player account |
+| `amount` | yes | number | Positive to credit, negative to debit |
 
 ```json
 { "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
 ```
+
+Debit: `"amount": -50`.
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
@@ -25,13 +34,18 @@ Transfer wallet only. `sn` is unique **per merchant**. Envelope: [Protocol](/en/
 | `currency` | string | [Currency](/en/enums#currency) |
 | `balance` | number | Platform balance after this transfer |
 
-| code | Description |
-|---|---|
-| `TRANSFER_SN_EXIST` | `sn` already posted; call `/transfer/check` |
-| `BALANCE_INSUFFICIENT` | Debit exceeds balance |
-| `ACC_NOT_FOUND` | Player missing |
+```json
+{
+  "code": "OK",
+  "data": { "currency": "TWD", "balance": 100 }
+}
+```
 
-HTTP 500: `/transfer/check` with the original `sn`.
+| code | Definition | Handling |
+|---|---|---|
+| `TRANSFER_SN_EXIST` | That `sn` was already posted. Not a failure | Call `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | Insufficient balance for the debit, not posted | |
+| `ACC_NOT_FOUND` | Player does not exist, not posted | |
 </Card>
 
 ## POST `/transfer/check`
@@ -39,26 +53,42 @@ HTTP 500: `/transfer/check` with the original `sn`.
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `sn` | yes | string | |
-| `acc` | yes | string | |
+| `sn` | yes | string | Original transfer reference |
+| `acc` | yes | string | Player account |
+
+```json
+{ "sn": "T20260917-0001", "acc": "jordan" }
+```
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `sn` | string | Transfer id |
-| `amount` | number | Amount |
-| `balance` | number | Balance after this transfer |
-| `created_at` | integer | Unix seconds |
-| `agent` | object | Merchant profile |
-| `member` | object | Player profile |
+| `sn` | string | Transfer reference |
+| `amount` | number | Amount of this transfer, positive credit and negative debit |
+| `balance` | number | Platform balance at the moment this transfer completed |
+| `created_at` | integer | Posting time, Unix seconds |
+| `agent` | object | Merchant profile, end of page |
+| `member` | object | Player profile, end of page |
 
-Missing: `TRANSFER_NOT_FOUND`.
+```json
+{
+  "code": "OK",
+  "data": {
+    "sn": "T20260917-0001",
+    "amount": 100,
+    "balance": 100,
+    "created_at": 1758723906,
+    "agent": { "id": 1, "acc": "kiwi01", "name": "Kiwi", "player_type": "AGENT", "currency": "TWD" },
+    "member": { "id": 123, "acc": "kiwi01_jordan", "name": "Amy", "player_type": "MEMBER", "currency": "TWD" }
+  }
+}
+```
 
 | code | Definition | Handling |
 |---|---|---|
-| `TRANSFER_NOT_FOUND` | No such transfer | After an HTTP 500, requery; only then may a new `sn` be used |
-| `ACC_NOT_FOUND` | The `acc` used for the query matches no player | The query is invalid; it does not mean the transfer was not posted. Requery with the same `acc` as the original `/transfer/add`. Do not resend under a new `sn` |
+| `TRANSFER_NOT_FOUND` | No such transfer | After an HTTP 500, requery after an interval; if still absent, a new `sn` may be used |
+| `ACC_NOT_FOUND` | The `acc` used for the query matches no player | Requery with the `acc` of the original `/transfer/add` |
 </Card>
 
 ## POST `/transfer/list`
@@ -68,21 +98,33 @@ Missing: `TRANSFER_NOT_FOUND`.
 |---|---|---|---|
 | `page` | yes | integer | ≥ 1 |
 | `perpage` | yes | integer | 1–100 |
-| `start_at` / `end_at` | yes | integer | Unix seconds; `end_at` > `start_at` |
-| `acc` | no | string | |
+| `start_at` | yes | integer | Start Unix seconds (`created_at`) |
+| `end_at` | yes | integer | End Unix seconds, greater than `start_at` |
+| `acc` | no | string | Filter by player |
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `row_count` | integer | Total rows |
+| `row_count` | integer | Total matching rows |
 | `page_count` | integer | Total pages |
-| `list` | array | Newest first |
+| `list` | array | Transfer rows, newest first |
 
-`list[]`: `sn`, `amount`, `balance`, `created_at`, `agent`, `member` — same meaning as `/transfer/check`.
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | Transfer reference |
+| `amount` | number | Amount |
+| `balance` | number | Balance at the moment this transfer completed |
+| `created_at` | integer | Unix seconds |
+| `agent` | object | Merchant profile |
+| `member` | object | Player profile |
 </Card>
 
 ## Objects `agent` / `member`
+
+`Player.Profile()`:
 
 | Field | Type | Description |
 |---|---|---|
@@ -91,3 +133,8 @@ Missing: `TRANSFER_NOT_FOUND`.
 | `name` | string | Display name |
 | `player_type` | string | [Account type](/en/enums#player-type) |
 | `currency` | string | [Currency](/en/enums#currency) |
+
+## Constraints {#constraints}
+
+1. `ACC_NOT_FOUND` from `/transfer/check` means the query was invalid. It does not mean the transfer was not posted.
+2. After an HTTP 500 from `/transfer/add`, verify with the original `sn`. See [G3](/en/protocol#g3).

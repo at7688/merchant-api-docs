@@ -3,56 +3,125 @@ title: Granted spins
 description: Grant, cancel, list.
 ---
 
-<Warning>
-`/free_round/add` is not open yet; the opening date will be announced. `/free_round/cancel` and `/free_round/list` remain available.
-</Warning>
-
-Free rounds: no player debit, no JP. A win callback may still fire. Envelope: [Protocol](/en/protocol).
+Grants free spins to a given player. No player debit, no JP. The success envelope is on [Protocol](/en/protocol). Idempotency is [G1](/en/protocol#g1).
 
 | Item | Rule |
 |---|---|
-| `sn` | Globally unique. If already used, `existed=true` and the row is unchanged |
-| `game_code` | Uppercased. Empty = any game when consumed. Non-empty values should match `/game/list` `code`; unknown codes are not rejected |
-| `expire_at` | `0` = 30 days from now; later timestamps are capped at 30 days |
-| Monthly cap | Nominal `bet_amount × count`, calendar month in **UTC+8** (`Asia/Shanghai`). Unset cap = unlimited |
-| Stake | If a game is set, must lie within that player’s `bet_min` / `bet_max` |
+| `sn` | Globally unique. If another merchant has used it, `existed=true` and this row is unchanged |
+| `game_code` | Uppercased. An empty string means any game, and any game can consume a round. A non-empty value must be a `code` from `/game/list`; the platform does not reject a grant over an unknown code |
+| `expire_at` | `0` or unset = 30 days from now. A timestamp beyond 30 days is capped at 30 days |
+| Monthly cap | Nominal `bet_amount × count`, calendar month counted from the month boundary in UTC+8 (`Asia/Shanghai`). No back-office cap means no check |
+| Stake | If a game is set, must lie within that player's `bet_min` / `bet_max` for that game |
 
-Consumption order: oldest grant first (`id` ascending). The platform decrements one round when the player bets that game. Transfer wallet: no platform debit, no JP. Seamless: no `/player/bet`; settle may still `/player/win`. Buy-free is rejected while rounds remain. Bet list still includes the round at nominal `bet_amount` with no grant flag. Remain lives on the platform; this API does not push remain to the merchant.
+Consumption order: for one player, unused grants run in grant order (`id` ascending). The platform decrements one round when the player enters that game and bets.
+
+| On consumption | Behavior |
+|---|---|
+| Transfer wallet | That round takes no platform debit and no JP |
+| Seamless | That round sends no `/player/bet`; settlement may still send `/player/win`, see [Callback constraints](/en/callback#constraints) |
+| Buy free | The platform rejects it while rounds remain (`BUY_FREE_NOT_AVAILABLE`, game RPC) |
+| Bet list | The round still appears in `/bet_rec/list`, see [Record constraints](/en/records#constraints) |
 
 ## POST `/free_round/add`
 
-`sn` is idempotent.
+Not open yet; the opening date will be announced separately. `/free_round/cancel` and `/free_round/list` remain available.
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `sn` | yes | string | Campaign id, ≤ 80 |
-| `acc` | yes | string | Player id, no prefix |
+| `sn` | yes | string | Campaign id, length ≤ 80 |
+| `acc` | yes | string | Player account, no prefix |
 | `game_code` | no | string | Game code, uppercased. Empty = any game |
 | `bet_amount` | yes | number | Nominal stake, > 0 |
-| `count` | yes | integer | 1–100 |
-| `expire_at` | yes | integer | Unix seconds; `0` = default TTL |
+| `count` | yes | integer | Rounds, 1–100 |
+| `expire_at` | yes | integer | Expiry Unix seconds; `0` = system default |
+
+```json
+{
+  "sn": "FR-20260917-001",
+  "acc": "jordan",
+  "game_code": "MLCQ",
+  "bet_amount": 1,
+  "count": 10,
+  "expire_at": 0
+}
+```
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
 | `sn` | string | Campaign id |
-| `existed` | boolean | `true` if this `sn` was already granted |
+| `existed` | boolean | `true` means this `sn` was granted earlier and no rounds were added this time |
 
-Codes: `FREE_ROUND_CAP`, `BET_AMOUNT_RANGE`, `ACC_NOT_FOUND`, `WRONG_OPERATION`.
+```json
+{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
+```
+
+| code | Description |
+|---|---|
+| `FREE_ROUND_CAP` | The nominal total for the month (count × stake) exceeds the cap |
+| `BET_AMOUNT_RANGE` | Stake outside min/max |
+| `ACC_NOT_FOUND` | Player does not exist |
+| `WRONG_OPERATION` | Parameters cannot be granted (count, stake, account) |
 </Card>
 
 ## POST `/free_round/cancel`
 
-Request: `{ "sn": "..." }`. Response `data` is `null`. Remaining rounds become 0.
+Remaining rounds go to zero. Consumed rounds stay in the bet history.
+
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `sn` | yes | string | Campaign id |
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `data` | null | Always `null` |
+
+```json
+{ "code": "OK", "data": null }
+```
+
+| code | Description |
+|---|---|
+| `ACC_NOT_FOUND` | No such campaign |
+</Card>
 
 ## POST `/free_round/list`
 
 <Card title="Request" icon="arrow-up-from-bracket">
-`page` ≥ 1, `perpage` 1–100, optional `acc`, `start_at`, `end_at`.
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `page` | yes | integer | ≥ 1 |
+| `perpage` | yes | integer | 1–100 |
+| `acc` | no | string | Filter by player |
+| `start_at` / `end_at` | no | integer | Unix seconds (`created_at`) |
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
-`row_count`, `page_count`, `list[]`: `sn`, `game_code`, `bet_amount` (number), `total` / `remain` (integer), `expire_at`, `created_at` (Unix seconds).
+| Field | Type | Description |
+|---|---|---|
+| `row_count` | integer | Total rows |
+| `page_count` | integer | Total pages |
+| `list` | array | Campaign rows |
+
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | Campaign id |
+| `game_code` | string | Game code |
+| `bet_amount` | number | Nominal stake |
+| `total` | integer | Rounds granted |
+| `remain` | integer | Rounds remaining |
+| `expire_at` | integer | Expiry Unix seconds |
+| `created_at` | integer | Created, Unix seconds |
 </Card>
+
+## Constraints {#constraints}
+
+1. The platform holds the remaining rounds. Query them with `remain` from `/free_round/list`. The merchant API does not push them.
+2. Whether the game screen shows the remaining rounds is decided by the game client.

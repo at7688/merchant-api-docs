@@ -3,17 +3,17 @@ title: Players
 description: Create, balance, login, logout.
 ---
 
-Inner `acc` excludes the agent prefix. Times are Unix seconds. Envelope: [Protocol](/en/protocol). Tables below describe `data`.
+Inner `acc` excludes the agent prefix. Times are Unix seconds. The outer envelope on success is in [Protocol](/en/protocol); only `data` is listed below.
 
 ## POST `/player/add`
 
-Currency, JP flag and stake limits are copied from the merchant agent. `ACC_EXIST` means the account already exists.
+Creates a member. Currency, JP flag and stake limits are copied from the merchant agent.
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | yes | string | Player id, alphanum 6–60, stored lowercase |
-| `name` | yes | string | Display name, ≤ 30 |
+| `acc` | yes | string | Player id. Alphanumeric 6–60, stored lowercase |
+| `name` | yes | string | Display name. Length ≤ 30 |
 
 ```json
 { "acc": "jordan", "name": "Amy" }
@@ -23,26 +23,41 @@ Currency, JP flag and stake limits are copied from the merchant agent. `ACC_EXIS
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `acc` | string | Full account `{agent_acc}_{acc}` |
-| `player_acc` | string | Unprefixed player id |
-| `player_id` | integer | Internal id |
+| `acc` | string | Full platform account, `{agent_acc}_{acc}` |
+| `player_acc` | string | Player id without the prefix. Send this value in later requests |
+| `player_id` | integer | Internal platform id |
 
 ```json
 {
+  "api_version": "v1",
+  "message": "",
   "code": "OK",
-  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 }
+  "data": {
+    "acc": "kiwi01_jordan",
+    "player_acc": "jordan",
+    "player_id": 123
+  },
+  "trace_id": "3f2c1a0b-...."
 }
 ```
+
+| code | Description |
+|---|---|
+| `ACC_EXIST` | Account already exists |
 </Card>
 
 ## POST `/player/balance`
 
-Transfer wallet only.
+Returns the platform balance. Applies to the transfer wallet.
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | yes | string | Player id |
+| `acc` | yes | string | Player id. Alphanumeric 6–60 |
+
+```json
+{ "acc": "jordan" }
+```
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
@@ -50,29 +65,68 @@ Transfer wallet only.
 |---|---|---|
 | `currency` | string | [Currency](/en/enums#currency) |
 | `balance` | number | Platform balance |
+
+```json
+{
+  "code": "OK",
+  "data": { "currency": "TWD", "balance": 1680.4 }
+}
+```
 </Card>
 
 ## POST `/player/login`
 
-`ip` is the player address.
+Issues a lobby or game URL. `ip` is the player address.
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | yes | string | Player id |
+| `acc` | yes | string | Player id. Alphanumeric 6–60 |
 | `lang` | yes | string | BCP 47. [Language](/en/enums#lang) |
-| `ip` | yes | string | Player IPv4/IPv6 |
+| `ip` | yes | string | Player IPv4 or IPv6 |
 | `device` | yes | string | [Device](/en/enums#device) |
-| `game_code` | no | string | Omitted → lobby |
-| `return_url` | no | string | Valid URL |
+| `game_code` | no | string | Game code, case-insensitive (uppercased internally). Omitted or empty enters the lobby |
+| `return_url` | no | string | Return URL after leaving the game, inserted query-escaped |
+
+```json
+{
+  "acc": "jordan",
+  "lang": "zh-TW",
+  "ip": "203.0.113.10",
+  "device": "MOBILE",
+  "game_code": "MLCQ"
+}
+```
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `url` | string | Lobby or game URL. Open as-is; do not alter `token` |
+| `url` | string | Full lobby or game URL |
 
-Lookup uppercases `game_code`. The path in `url` is **lowercase**: with a code, `{GameURL}/{game_code}?token=&lang=&return_url=`; omitted, `{LobbyURL}?token=&lang=&return_url=`. `return_url` is query-escaped. Unknown code: `GAME_NOT_FOUND`. Maintenance: `GAME_MAINTAIN`.
+Lookup uppercases `game_code`. The returned path is lowercase:
+
+| `game_code` | `url` shape |
+|---|---|
+| Present | `{GameURL}/{game_code}?token=…&lang=…&return_url=…` |
+| Omitted or empty | `{LobbyURL}?token=…&lang=…&return_url=…` |
+
+```json
+{
+  "code": "OK",
+  "data": {
+    "url": "https://game.example/mlcq?token=eyJ...&lang=zh-TW&return_url="
+  }
+}
+```
+
+| code | Description |
+|---|---|
+| `ACC_NOT_FOUND` | Player does not exist |
+| `ACC_NOT_ACTIVE` | Player not activated |
+| `ACC_SUSPEND` | Player suspended |
+| `GAME_NOT_FOUND` | Invalid game code |
+| `GAME_MAINTAIN` | Game or category under maintenance |
 </Card>
 
 ## POST `/player/logout`
@@ -80,11 +134,24 @@ Lookup uppercases `game_code`. The path in `url` is **lowercase**: with a code, 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `acc` | no | string | Omitted: all members under the merchant |
+| `acc` | no | string | Omitted logs out every member under the merchant |
+
+```json
+{ "acc": "jordan" }
+```
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
 | Field | Type | Description |
 |---|---|---|
-| `count` | integer | Members logged out |
+| `count` | integer | Members actually logged out |
+
+```json
+{ "code": "OK", "data": { "count": 1 } }
+```
 </Card>
+
+## Constraints {#constraints}
+
+1. The `url` from `/player/login` is opened directly by the client. `token` must not be modified.
+2. Games under maintenance still appear in `/game/list`; see [Records constraints](/en/records#constraints).

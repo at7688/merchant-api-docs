@@ -1,6 +1,6 @@
 ---
 title: 传输协议
-description: 报文、AES-256-GCM、HTTP 与 code。
+description: 报文、AES-256-GCM、HTTP、code 与通则。
 ---
 
 ## 请求
@@ -10,38 +10,39 @@ description: 报文、AES-256-GCM、HTTP 与 code。
 | 方法 | `POST` |
 | 标头 | `Content-Type: application/json` |
 | 编码 | UTF-8 |
-| URL | `{base}{path}` |
+| URL | `{base}{path}`，例如 `https://api.at-dev.app/api/v1/player/add` |
 | 路径前缀 | `/api/v1` |
-| 额外头 | 不需要。来源 IP 取 `CF-Connecting-IP`，否则 `X-Forwarded-For`／连接地址，须在白名单 |
+| 额外标头 | 不需要。来源 IP 取 `CF-Connecting-IP`，否则 `X-Forwarded-For`／连接地址，须符合 [G6](#g6) |
 
 ## 惯例
 
 | 项目 | 规定 |
 |---|---|
-| `agent_acc` | 去空白后转小写 |
-| `acc` | 去空白后转小写，再拼成 `{agent_acc}_{acc}` |
-| `game_code` | 去空白后转大写 |
-| 时间 | Unix **秒**。账务日界为 **UTC+8**（`Asia/Shanghai`）当日 00:00 |
-| 金额 | JSON number，小数最多两位 |
+| `agent_acc` | 比对前转小写、去首尾空白 |
+| `acc` | 去首尾空白后转小写，再与代理账号拼成 `{agent_acc}_{acc}` |
+| `game_code` | 去空白后转大写。登录、赠送旋转皆然 |
+| 时间 | Unix 秒（10 位）。账务日界为 UTC+8（`Asia/Shanghai`）当日 00:00 |
+| 金额 | JSON number。小数最多两位（数据库 `DECIMAL`） |
 | 选填筛选 | 空字符串或 0 表示不套该条件 |
 | 请求不合格 | 外层或内层 JSON 无法解析、字段类型不对、或字段验证未通过，一律 `PARAM_INVALID` |
-
-回调 base 与路径直接拼接：`{MerchantApiUrl}/player/bet`。base **不得**以 `/` 结尾。
 
 ### 外层
 
 ```json
-{ "agent_acc": "kiwi01", "data": "<ciphertext hex>" }
+{
+  "agent_acc": "kiwi01",
+  "data": "<ciphertext hex>"
+}
 ```
 
 | 字段 | 必填 | 类型 | 约束 |
 |---|---|---|---|
-| `agent_acc` | 是 | string | 英数，长度 ≤ 60 |
+| `agent_acc` | 是 | string | 英数，长度 ≤ 60，对应后台代理账号 |
 | `data` | 是 | string | 内层明文加密后之十六进制 |
 
 ### 内层
 
-UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。
+UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。例：
 
 ```json
 {"acc":"jordan","name":"Amy"}
@@ -52,16 +53,16 @@ UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。
 | 参数 | 值 |
 |---|---|
 | 算法 | AES-256-GCM |
-| 密钥 | ApiKey 十六进制解码，32 字节 |
+| 密钥 | ApiKey 十六进制解码，长度 32 字节 |
 | nonce | 12 bytes，每个请求独立随机，禁止重用 |
 | tag | 16 bytes |
 | 密文排列 | `nonce ‖ ciphertext ‖ tag`，再编码为 hex |
 
-单一钱包回调使用同一密钥与同一排列。平台报文仅 `{ "data": "<hex>" }`，**不含** `agent_acc`。超时 15 秒。商户响应须为 JSON，顶层含 `code`。HTTP 状态须为 2xx，否则平台视为结果未决。
+单一钱包回调使用同一密钥与同一排列，报文见 [回调](/zh-CN/callback)。
 
-### 参考向量
+### 参考向量 {#vectors}
 
-仅供实现核对，不得作为正式密钥。明文为 `{"acc":"jordan","name":"Amy"}`（无空白、无换行）。
+明文为 `{"acc":"jordan","name":"Amy"}`（无空白、无换行）。
 
 | | hex |
 |---|---|
@@ -72,6 +73,7 @@ UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。
 <CodeGroup>
 ```javascript Node.js
 const crypto = require("crypto");
+
 function encrypt(plain, keyHex) {
   const key = Buffer.from(keyHex, "hex");
   const nonce = crypto.randomBytes(12);
@@ -84,6 +86,7 @@ function encrypt(plain, keyHex) {
 ```python Python
 import os, binascii
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 def encrypt(plain: str, key_hex: str) -> str:
     key = binascii.unhexlify(key_hex)
     nonce = os.urandom(12)
@@ -94,7 +97,7 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 ## 响应
 
-各接口成功时均为该报文。`data` 字段见各接口页。
+各接口成功时均为该报文。`data` 之字段见该接口页。
 
 ```json
 {
@@ -108,13 +111,13 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `api_version` | string | 当前为 `v1` |
+| `api_version` | string | API 版本，当前为 `v1` |
 | `message` | string | 附加说明，多为空字符串 |
 | `code` | string | 业务结果。成功仅为 `OK` |
-| `data` | object \| array \| null | 成功时的数据本体。错误时多为 `null`，少数错误会带诊断对象（见 [错误码](/zh-CN/errors)） |
-| `trace_id` | string | 本次请求标识 |
+| `data` | object \| array \| null | 成功时的数据本体。错误时多为 `null`，少数错误带诊断对象（见 [错误码](/zh-CN/errors)） |
+| `trace_id` | string | 本次请求标识，对账与缺陷报告使用 |
 
-成功与否以 `code` 为准。
+成功与否以 `code` 为准。所有 `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`）皆以 HTTP 200 返回。
 
 ### HTTP 状态
 
@@ -122,10 +125,81 @@ def encrypt(plain: str, key_hex: str) -> str:
 |---|---|
 | `200` | 请求已被处理。成功与否读 `code` |
 | `404` | 路径不存在 |
-| `500` | 结果未决，body 未必为 JSON |
+| `500` | 结果未决，body 未必为 JSON。处置见 [G3](#g3) |
 
-<Warning>
-本文档所有 `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`）皆以 **HTTP 200** 返回。
-</Warning>
+## 通则
 
-HTTP 500 表示结果未决：转账须以同一 `sn` 调用 `/transfer/check`；单一钱包须以商户账本及 `/bet_rec/query` 核对，不得径行冲正。
+以下六条跨多个接口。各接口页以编号引用。
+
+### G1 幂等键 {#g1}
+
+| 项目 | 规定 |
+|---|---|
+| 键 | `sn`。`/transfer/add`、`/free_round/add` 与单一钱包 `bet`／`win`／`refund` 皆以 `sn` 判定重复 |
+| 首次收到 | 执行并持久化结果 |
+| 重复且首次成功 | 返回首次结果，余额不变 |
+| 重复且首次拒绝 | 返回首次错误 `code` |
+| 商户端去重记录 | 至少保留 90 天 |
+
+### G2 回调重送 {#g2}
+
+超时当下不重送同一封包。之后对同一 `sn` 可能再发：
+
+| 情况 | 后续回调 |
+|---|---|
+| `/player/bet` 结果未决 | `/player/refund`（自动或值班补送） |
+| `/player/win` 未成功（一般注单） | 再发 `/player/win`（游戏重送或值班补送） |
+| `/player/win` 未成功（锦标赛派彩） | 不自动重送，由值班补送。商户以错误 `code` 拒绝者不补送 |
+| 注单卡住超时后取消 | `/player/refund` |
+
+`/player/refund` 之自动重送：
+
+| 项目 | 规定 |
+|---|---|
+| 首次间隔 | 60 秒 |
+| 退避 | 60 × 2^n 秒，单次间隔上限 1 小时 |
+| 总时限 | 24 小时 |
+| 超过 24 小时 | 停止自动重送，转「超时待处理」，改由值班重送或人工结案，无时效上限 |
+
+玩家掉线后仍可能收到 `/player/win`。
+
+### G3 结果未决 {#g3}
+
+HTTP 500、连接中断或超时：不得假设成功或失败，不得径行冲正。
+
+| 场景 | 规定 |
+|---|---|
+| `/transfer/add` | 以原 `sn` 调用 `/transfer/check`。查得记录即已入账；返回 `TRANSFER_NOT_FOUND` 后方可使用新 `sn` |
+| 单一钱包 | 以商户账本该 `sn` 为准，并以 `/bet_rec/query` 核对 |
+| 其余接口 | 重试得使用原参数 |
+
+`/bet_rec/query` 列上 `BET_NOT_FOUND` 不得据此自动退款。转账不得更换 `sn`。
+
+### G4 速率限制 {#g4}
+
+| 接口 | 上限 |
+|---|---|
+| `/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list` | 每商户每分钟 10 次 |
+| 其余接口 | 不限流 |
+
+超出为 `TOO_MANY_REQUESTS`。
+
+### G5 数据保留期限 {#g5}
+
+| 对象 | 期限 |
+|---|---|
+| 汇总数据（`/bet_report/list`） | 60 天。更早的区间返回空列表（`code` 为 `OK`、`row_count` 为 0） |
+| 注单（`/bet_rec/list`、`/bet_rec/query`） | 不受 60 天限制 |
+| 商户端 `sn` 去重记录 | 至少 90 天 |
+| 赠送旋转未指定 `expire_at` | 自发放起 30 日 |
+
+### G6 密钥与来源地址 {#g6}
+
+| 项目 | 规定 |
+|---|---|
+| ApiKey | 仅能置于服务器端 |
+| 参考向量之密钥 | 不得作为正式密钥 |
+| 来源 IP | 须列入该商户白名单，否则响应 `IP_NOT_ALLOWED` |
+| 白名单比对 | 逐笔 IP 地址完全比对，不支持网段／CIDR。每个出口地址单独登记，含 NAT 地址池全部地址 |
+| IPv6 | 须与来源地址字面完全相同 |
+| 缺陷报告 | 提供环境、路径、`agent_acc`、`trace_id` 与 UTC 时间，不含 ApiKey |

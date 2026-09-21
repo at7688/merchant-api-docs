@@ -3,35 +3,63 @@ title: Records
 description: Bets, JP, reports, scratch cards.
 ---
 
-Read-only. `end_at` > `start_at`. Envelope: [Protocol](/en/protocol). Profiles: [Transfers](/en/transfer).
+Query endpoints do not change balances. `end_at` must be greater than `start_at`. `acc` carries no prefix; omitted or empty means no player filter. Success envelope: [Protocol](/en/protocol). `agent` / `member`: end of [Transfers](/en/transfer).
 
-Time columns are **not** always bet time:
+Time column that `start_at` / `end_at` map to, per endpoint:
 
-| Endpoint | `start_at` / `end_at` |
+| Endpoint | Column |
 |---|---|
-| `/bet_rec/list` | `updated_at` (includes settlement). Also pruned by bet date (`beted_date`, UTC+8 midnight), which must fall between the day before the window's start day and the window's end day. A bet that changes more than a day after it was placed is not returned; look it up by `sn` with `/bet_rec/query` |
+| `/bet_rec/list` | `updated_at` (change time, including settlement). Also pruned by bet date (`beted_date`, UTC+8 00:00), which must fall between the day before the window's start day and the window's end day. A bet that changes more than a day after it was placed is not returned; look it up by `sn` with `/bet_rec/query` |
 | `/jp_rec/list` | `created_at` |
-| `/bet_report/list` | `beted_date` or `settled_date` / minute, Unix seconds at UTC+8 (`Asia/Shanghai`) 00:00 |
-| `/scratch_card_rec/list` | `updated_at` |
+| `/bet_report/list` | `beted_date` or `settled_date` / minute column, Unix seconds at UTC+8 (`Asia/Shanghai`) 00:00 |
+| `/scratch_card_rec/list` | `updated_at` (status change time) |
 | `/transfer/list` | `created_at` |
 | `/free_round/list` | `created_at` |
 
-Rate 10 / merchant / minute: `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list`; exceeding it returns `TOO_MANY_REQUESTS`. No other endpoint is rate-limited. Empty `acc` means no player filter.
+Rate limits: [G4](/en/protocol#g4). Retention: [G5](/en/protocol#g5).
 
 ## POST `/game/list`
 
+Returns only games with `is_active=true`.
+
+<Card title="Request" icon="arrow-up-from-bracket">
+The inner body may be `{}`.
+</Card>
+
 <Card title="Response" icon="arrow-down-to-bracket">
-Active games only (`is_active=true`). Maintenance games still appear; login returns `GAME_MAINTAIN`. `data.list[]`: `id` (integer), `code` (string, login `game_code`), `name` (object, keys: [language](/en/enums#lang)), [game category](/en/enums#game-category), `game_type_code` (string).
+| Field | Type | Description |
+|---|---|---|
+| `list` | array | Game list |
+
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer | Internal id |
+| `code` | string | Game code, matching the login `game_code` |
+| `name` | object | Localized names, keyed by [language](/en/enums#lang) |
+| `game_category_code` | string | [Game category](/en/enums#game-category) |
+| `game_type_code` | string | Type code |
 </Card>
 
 ## POST `/bet_rec/list`
 
 <Card title="Request" icon="arrow-up-from-bracket">
-`page` ≥ 1, `perpage` 1–1000, `start_at`, `end_at`, optional `acc`.
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `page` | yes | integer | ≥ 1 |
+| `perpage` | yes | integer | 1–1000 |
+| `start_at` | yes | integer | Change-time lower bound, Unix seconds (`updated_at`) |
+| `end_at` | yes | integer | Change-time upper bound, greater than `start_at` |
+| `acc` | no | string | Filter by player |
 </Card>
 
 <Card title="Response" icon="arrow-down-to-bracket">
-`row_count`, `page_count`, `list`.
+| Field | Type | Description |
+|---|---|---|
+| `row_count` | integer | Total rows |
+| `page_count` | integer | Total pages |
+| `list` | array | Bet rows |
 
 `list[]`:
 
@@ -41,65 +69,231 @@ Active games only (`is_active=true`). Maintenance games still appear; login retu
 | `round_sn` | string | Round id |
 | `game_category_code` | string | [Game category](/en/enums#game-category) |
 | `game_type_code` | string | Type |
-| `game_code` | string | Game |
+| `game_code` | string | Game code |
 | `acc` | string | Full account |
 | `player_acc` | string | Unprefixed |
 | `bet_amount` | number | Stake |
 | `win_amount` | number | Payout |
 | `valid_amount` | number | Valid stake. Always 0 for unsettled (`PENDING`) and refunded (`REFUND`) bets |
-| `result` | number | Settled (`FINISH`): payout − stake. Unsettled and refunded bets are always 0 (**not** −stake) |
-| `free_game_type` | string | [Free-game](/en/enums#free-game-type) |
-| `beted_at` | integer | Bet time |
-| `settled_at` | integer | Settlement time; 0 if unset |
+| `result` | number | Net. Settled (`FINISH`): payout − stake. Unsettled and refunded bets are always 0, not −stake |
+| `free_game_type` | string | [Free game](/en/enums#free-game-type) |
+| `beted_at` | integer | Bet time, Unix seconds |
+| `settled_at` | integer | Settlement time, Unix seconds; 0 when unsettled |
 | `status` | string | [Bet status](/en/enums#bet-status) |
-| `agent` / `member` | object | Profiles |
-| `slot_bet_detail` | object | Game-specific |
+| `agent` | object | Merchant profile |
+| `member` | object | Player profile |
+| `slot_bet_detail` | object | Game-side detail, structure varies by game |
 </Card>
-
-Granted-spin rounds still appear; `bet_amount` is the nominal stake. This endpoint does not flag grants.
 
 ## POST `/bet_rec/detail`
 
-Request: `sn`, `lang` ([language](/en/enums#lang)). Response `data.url`: result-page URL.
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `sn` | yes | string | Bet id, length ≤ 120 |
+| `lang` | yes | string | BCP 47. [Language](/en/enums#lang) |
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `url` | string | Result-page URL |
+
+```json
+{
+  "code": "OK",
+  "data": { "url": "https://lobby.example/gameResult?sn=SGP...&lang=zh-TW&is_jp=0" }
+}
+```
+</Card>
 
 ## POST `/bet_rec/query`
 
-Request: `sns` (1–100). Envelope `code` remains `OK`. `list[]` matches request order. Every item has `code`: found rows are `code` `OK` plus `status` ([bet status](/en/enums#bet-status)); missing rows are `code` `BET_NOT_FOUND` with no `status`. Read item `code` first. Item `BET_NOT_FOUND` must not trigger an automatic refund.
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `sns` | yes | string[] | 1–100 bet ids |
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `list` | array | Same length and same order as the request `sns` |
+
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | The bet id queried |
+| `code` | string | Present on every item. `OK` when the bet exists, `BET_NOT_FOUND` when it does not |
+| `status` | string | Only when the item `code` is `OK`: [bet status](/en/enums#bet-status). Absent when the bet does not exist |
+
+An outer `code` of `OK` means this request succeeded. Read `status` only when the item `code` is `OK`.
+
+```json
+{
+  "code": "OK",
+  "data": {
+    "list": [
+      { "sn": "A", "code": "OK", "status": "PENDING" },
+      { "sn": "B", "code": "OK", "status": "FINISH" },
+      { "sn": "C", "code": "OK", "status": "REFUND" },
+      { "sn": "D", "code": "BET_NOT_FOUND" }
+    ]
+  }
+}
+```
+
+Handling of an item-level `BET_NOT_FOUND`: [G3](/en/protocol#g3).
+</Card>
 
 ## POST `/bet_report/list`
 
-<Warning>
-Aggregates are kept for **60 days**; an earlier window returns an empty list (`code` `OK`,
-`row_count` 0). `/bet_rec/list` is not subject to this.
-</Warning>
-
-The two `time_unit` axes cover different populations and must not be summed or reconciled
-against each other:
+The two `time_unit` axes cover different populations:
 
 | `time_unit` | Bets counted |
 |---|---|
-| `bet` | every bet stored in the period, including unsettled and refunded ones (whose `win_amount` / `result` are 0) |
-| `settle` | settled (`FINISH`) only |
+| `bet` | Every bet stored in the period, including unsettled and refunded ones (whose `win_amount` / `result` are 0) |
+| `settle` | Settled (`FINISH`) bets only |
 
-Request: `page`, `perpage` 1–1000, `start_at`, `end_at`, `report_unit` ([aggregation period](/en/enums#report-unit)), `time_unit` ([time axis](/en/enums#time-unit)), optional `acc`.
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `page` | yes | integer | ≥ 1 |
+| `perpage` | yes | integer | 1–1000 |
+| `start_at` / `end_at` | yes | integer | Unix seconds |
+| `report_unit` | yes | string | [Aggregation period](/en/enums#report-unit) |
+| `time_unit` | yes | string | [Time axis](/en/enums#time-unit) |
+| `acc` | no | string | Filter by player |
+</Card>
 
-Response `list[]`: `datetime` (string), `bet_count`, `bet_member_count` (integer), `bet_amount`, `valid_amount`, `win_amount`, `result` (number). Plus `row_count`, `page_count`.
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `row_count` | integer | Total rows |
+| `page_count` | integer | Total pages |
+| `list` | array | Aggregate rows |
+
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `datetime` | string | Time bucket |
+| `bet_count` | integer | Bets |
+| `bet_member_count` | integer | Betting players |
+| `bet_amount` | number | Stake |
+| `valid_amount` | number | Valid stake |
+| `win_amount` | number | Payout |
+| `result` | number | Platform net |
+</Card>
 
 ## POST `/jp_rec/list`
 
-Request as bet list. `list[]`: `sn`, [game category](/en/enums#game-category), `game_type_code`, `game_code`, [JP type](/en/enums#jp-type), `desk_id`, `acc`, `player_acc`, `bet_amount`, `amount` (JP payout), `beted_at`, `settled_at`, `agent`, `member`, `slot_bet_detail`.
+<Card title="Request" icon="arrow-up-from-bracket">
+Fields as `/bet_rec/list`.
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `row_count` | integer | Total rows |
+| `page_count` | integer | Total pages |
+| `list` | array | JP rows |
+
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | Record id |
+| `game_category_code` | string | [Game category](/en/enums#game-category) |
+| `game_type_code` | string | Type |
+| `game_code` | string | Game |
+| `jp_type` | string | [JP type](/en/enums#jp-type) |
+| `desk_id` | string | Table id, may be empty |
+| `acc` | string | Full account |
+| `player_acc` | string | Unprefixed |
+| `bet_amount` | number | Stake that triggered this JP |
+| `amount` | number | JP payout |
+| `beted_at` | integer | Bet time, Unix seconds |
+| `settled_at` | integer | Settlement time, Unix seconds |
+| `agent` | object | Merchant profile |
+| `member` | object | Player profile |
+| `slot_bet_detail` | object | Game-side detail |
+</Card>
 
 ## POST `/jp_rec/detail`
 
-Response `data.url` (JP result page, `is_jp=1`).
+<Card title="Request" icon="arrow-up-from-bracket">
+Fields as `/bet_rec/detail`.
+</Card>
+
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `url` | string | JP result-page URL (`is_jp=1`) |
+</Card>
 
 ## POST `/scratch_card_rec/list`
 
-Request: `page`, `perpage`, `start_at`, `end_at`, optional `status` ([scratch-card status](/en/enums#scratch-status)), `acc`, `lang` ([language](/en/enums#lang)).
+<Card title="Request" icon="arrow-up-from-bracket">
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `page` / `perpage` | yes | integer | `perpage` 1–1000 |
+| `start_at` / `end_at` | yes | integer | Unix seconds |
+| `status` | no | string | [Scratch-card status](/en/enums#scratch-status) |
+| `acc` | no | string | Filter by player |
+| `lang` | no | string | [Language](/en/enums#lang). `zh-TW` when omitted |
+</Card>
 
-`list[]`: `sn` (`SC_{id}`), `activity_name`, `card_code`, `card_name`, `prize_level`, `prize_amount`, `status`, `player_acc`, `member` (object or null), `claimed_at`, `scratched_at`.
+<Card title="Response" icon="arrow-down-to-bracket">
+| Field | Type | Description |
+|---|---|---|
+| `row_count` | integer | Total rows |
+| `page_count` | integer | Total pages |
+| `list` | array | Ticket rows |
+| `summary` | object | Totals over the same filter range, not limited by `status` |
 
-`summary`: `total_count` (integer), then `pending_count`, `claimed_count`, `scratched_count`,
-`total_prize`, `scratched_prize` (paid amount) — these five are **strings**
-(e.g. `"pending_count": "1"`, `"total_prize": "150.5000"`); the three counts are an
-**empty string** `""` when the window contains no tickets.
+`list[]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `sn` | string | `SC_{id}` |
+| `activity_name` | string | Campaign name |
+| `card_code` | string | Card code |
+| `card_name` | string | Card name |
+| `prize_level` | string | Prize tier |
+| `prize_amount` | number | Prize amount |
+| `status` | string | [Scratch-card status](/en/enums#scratch-status) |
+| `player_acc` | string | Unprefixed; may be empty when unclaimed |
+| `member` | object \| null | Player profile; null when unclaimed |
+| `claimed_at` | integer | Claim time, Unix seconds |
+| `scratched_at` | integer | Scratch time, Unix seconds |
+
+`summary`:
+
+| Field | Type | Description |
+|---|---|---|
+| `total_count` | integer | Tickets |
+| `pending_count` | string | Unclaimed. Decimal digit string; `""` when the window contains no tickets |
+| `claimed_count` | string | Claimed, not scratched. Decimal digit string; `""` when the window contains no tickets |
+| `scratched_count` | string | Scratched. Decimal digit string; `""` when the window contains no tickets |
+| `total_prize` | string | Total prize. Decimal digit string, four decimal places |
+| `scratched_prize` | string | Prizes paid, the reconciliation figure. Decimal digit string, four decimal places |
+
+```json
+{
+  "total_count": 3,
+  "pending_count": "1",
+  "claimed_count": "1",
+  "scratched_count": "1",
+  "total_prize": "150.5000",
+  "scratched_prize": "50.0000"
+}
+```
+</Card>
+
+## Constraints {#constraints}
+
+1. The two `time_unit` populations of `/bet_report/list` differ. They must not be summed or reconciled against each other.
+2. Bets produced by granted spins still appear in `/bet_rec/list`, with `bet_amount` as the nominal stake. This endpoint carries no separate grant flag.
+3. Games under maintenance still appear in `/game/list`. Login returns `GAME_MAINTAIN`.

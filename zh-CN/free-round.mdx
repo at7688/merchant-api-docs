@@ -1,51 +1,94 @@
 ---
-title: 免费旋转
+title: 赠送旋转
 description: 发放、取消、查询。
 ---
 
-<Warning>
-`/free_round/add` 尚未开放，开放日期另行通知。`/free_round/cancel`、`/free_round/list` 维持可用。
-</Warning>
-
-向指定玩家发放免费旋转。不扣除玩家余额、不计入 JP。单一钱包结算时仍可能发出 win 回调。报文见 [传输协议](/zh-CN/protocol)。
+向指定玩家发放赠送旋转。不扣除玩家余额、不计入 JP。成功报文见 [传输协议](/zh-CN/protocol)。幂等见 [G1](/zh-CN/protocol#g1)。
 
 | 项目 | 规定 |
 |---|---|
-| `sn` | 全站唯一。已被使用则 `existed=true` 且不改本笔 |
-| `game_code` | 转大写。空字符串表示不限游戏。非空时须为 `/game/list` 的 `code`；平台不因未知代码拒绝发放 |
-| `expire_at` | `0`＝自此刻起 30 日；超过 30 日的时间戳截成 30 日 |
-| 月额度 | 名义合计 `bet_amount × count`，日历月按 **UTC+8**（`Asia/Shanghai`）月初。后台未设上限则不检查 |
+| `sn` | 全站唯一。他商户已使用则 `existed=true` 且不改本笔 |
+| `game_code` | 转大写。空字符串表示不限游戏，消耗时任一游戏皆可扣次数。非空时须为 `/game/list` 的 `code`；平台不因未知代码拒绝发放 |
+| `expire_at` | `0` 或未指定＝自此刻起 30 日。超过 30 日的时间戳截成 30 日 |
+| 月额度 | 名义合计 `bet_amount × count`，日历月以 UTC+8（`Asia/Shanghai`）月初起算。后台未设上限则不检查 |
 | 注额 | 若指定游戏，须落在该玩家该游戏 `bet_min`／`bet_max` |
 
-消耗顺序：同一玩家多笔未用完记录按发放先后（`id` 升序）。玩家进入对应游戏并下注时，平台扣 1 次。转账钱包该转不扣平台余额、不计 JP。单一钱包该转不发 `/player/bet`，结算仍可能 `/player/win`。尚有剩余时购买免费旋转由平台拒绝。注单列表仍出现，名义注额；列表不另标是否赠送。剩余次数由平台持有，商户 API 无推送。
+消耗顺序：同一玩家多笔未用完记录按发放先后（`id` 升序）。玩家进入对应游戏并下注时，平台扣 1 次。
+
+| 消耗时 | 行为 |
+|---|---|
+| 转账钱包 | 该转不扣平台余额、不计 JP |
+| 单一钱包 | 该转不发 `/player/bet`；结算仍可能 `/player/win`，见 [回调约束](/zh-CN/callback#constraints) |
+| 购买免费 | 尚有剩余次数时平台拒绝（`BUY_FREE_NOT_AVAILABLE`，游戏 RPC） |
+| 注单列表 | 仍出现于 `/bet_rec/list`，见 [游戏记录约束](/zh-CN/records#constraints) |
 
 ## POST `/free_round/add`
 
-`sn` 为幂等键。
+尚未开放，开放日期另行通知。`/free_round/cancel`、`/free_round/list` 维持可用。
 
 <Card title="请求" icon="arrow-up-from-bracket">
 | 字段 | 必填 | 类型 | 说明 |
 |---|---|---|---|
-| `sn` | 是 | string | 活动单号，≤ 80 |
+| `sn` | 是 | string | 活动单号，长度 ≤ 80 |
 | `acc` | 是 | string | 玩家账号，不含前缀 |
 | `game_code` | 否 | string | 游戏代码，转大写。空＝不限游戏 |
 | `bet_amount` | 是 | number | 名义注额，> 0 |
 | `count` | 是 | integer | 次数，1–100 |
-| `expire_at` | 是 | integer | 到期 Unix 秒；`0` 为系统默认 |
+| `expire_at` | 是 | integer | 到期 Unix 秒；`0` 表示系统默认 |
+
+```json
+{
+  "sn": "FR-20260917-001",
+  "acc": "jordan",
+  "game_code": "MLCQ",
+  "bet_amount": 1,
+  "count": 10,
+  "expire_at": 0
+}
+```
 </Card>
 
 <Card title="响应" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `sn` | string | 活动单号 |
-| `existed` | boolean | `true` 表示该 `sn` 先前已发放 |
+| `existed` | boolean | `true` 表示该 `sn` 先前已发放，本次未再增加次数 |
 
-错误码：`FREE_ROUND_CAP`、`BET_AMOUNT_RANGE`、`ACC_NOT_FOUND`、`WRONG_OPERATION`。
+```json
+{ "code": "OK", "data": { "sn": "FR-20260917-001", "existed": false } }
+```
+
+| code | 说明 |
+|---|---|
+| `FREE_ROUND_CAP` | 当月名义总额（次数 × 注额）超过上限 |
+| `BET_AMOUNT_RANGE` | 注额超出上下限 |
+| `ACC_NOT_FOUND` | 玩家不存在 |
+| `WRONG_OPERATION` | 参数无法发放（次数、注额、账号） |
 </Card>
 
 ## POST `/free_round/cancel`
 
-请求 `{ "sn": "..." }`。响应 `data` 为 `null`。剩余次数归零。
+剩余次数归零。已消耗次数保留于注单历史。
+
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `sn` | 是 | string | 活动单号 |
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `data` | null | 固定为 `null` |
+
+```json
+{ "code": "OK", "data": null }
+```
+
+| code | 说明 |
+|---|---|
+| `ACC_NOT_FOUND` | 无此活动 |
+</Card>
 
 ## POST `/free_round/list`
 
@@ -55,9 +98,30 @@ description: 发放、取消、查询。
 | `page` | 是 | integer | ≥ 1 |
 | `perpage` | 是 | integer | 1–100 |
 | `acc` | 否 | string | 筛选玩家 |
-| `start_at` / `end_at` | 否 | integer | Unix 秒 |
+| `start_at` / `end_at` | 否 | integer | Unix 秒（`created_at`） |
 </Card>
 
 <Card title="响应" icon="arrow-down-to-bracket">
-`row_count`、`page_count`，`list[]`：`sn`、`game_code`、`bet_amount`、`total`、`remain`、`expire_at`、`created_at`。
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `row_count` | integer | 总笔数 |
+| `page_count` | integer | 总页数 |
+| `list` | array | 活动列 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | 活动单号 |
+| `game_code` | string | 游戏代码 |
+| `bet_amount` | number | 名义注额 |
+| `total` | integer | 发放次数 |
+| `remain` | integer | 剩余次数 |
+| `expire_at` | integer | 到期 Unix 秒 |
+| `created_at` | integer | 创建时间，Unix 秒 |
 </Card>
+
+## 约束 {#constraints}
+
+1. 剩余次数由平台持有，以 `/free_round/list` 的 `remain` 查询。商户 API 无推送。
+2. 游戏画面是否显示剩余次数由游戏端决定。

@@ -3,17 +3,17 @@ title: Integration
 description: Transfer-wallet sequence.
 ---
 
-Transfer wallet: player balance resides on the platform. The merchant creates players, logs them in, and moves funds via `/transfer/*`. Bets debit the platform balance.
+Transfer wallet: player balance resides on the platform. The merchant creates players, logs them in, and moves funds in and out via `/transfer/*`. Bets debit the platform balance.
 
 Shared spec: [Protocol](/en/protocol), [Error codes](/en/errors).
 
 ## Sequence
 
-1. Obtain `agent_acc` and ApiKey; whitelist source IPs.
-2. Implement AES-256-GCM (see the protocol reference vector).
-3. `POST /player/add`. `acc` excludes the agent prefix.
-4. `POST /transfer/add` to credit. `sn` is the idempotency key; on HTTP 500 call `/transfer/check` with the original `sn`.
-5. `POST /player/login` for the lobby or game URL.
+1. Obtain `agent_acc` and ApiKey; whitelist the source IPs ([G6](/en/protocol#g6)).
+2. Implement AES-256-GCM. See [Reference vector](/en/protocol#vectors).
+3. `POST /player/add` creates the player. `acc` excludes the agent prefix.
+4. `POST /transfer/add` credits the player. Idempotency: [G1](/en/protocol#g1). HTTP 500 handling: [G3](/en/protocol#g3).
+5. `POST /player/login` returns the lobby or game URL.
 6. Reconciliation: `/transfer/check`, `/transfer/list`, `/bet_rec/*`.
 
 Next: [Players](/en/player), [Transfers](/en/transfer), [Records](/en/records), [Granted spins](/en/free-round).

@@ -3,32 +3,65 @@ title: 游戏记录
 description: 注单、JP、报表、刮刮卡。
 ---
 
-查询接口不变更余额。`end_at` 须大于 `start_at`。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 同 [转账](/zh-CN/transfer)。
+查询接口不变更余额。`end_at` 须大于 `start_at`。`acc` 不含前缀；省略或空字符串表示不筛玩家。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 同 [转账](/zh-CN/transfer) 页末。
 
-时间字段并非每支都用下注时间：
+各接口 `start_at`／`end_at` 对应的时间字段：
 
-| 接口 | `start_at`／`end_at` 对应 |
+| 接口 | 对应字段 |
 |---|---|
-| `/bet_rec/list` | `updated_at`（含结算）。另以下注日（`beted_date`，UTC+8 当日 00:00）裁切，须介于区间起日前一天至区间结束日。下注逾一天后才变动的单不在结果内，改用 `/bet_rec/query` 按单号查 |
+| `/bet_rec/list` | `updated_at`（变动时间，含结算）。另以下注日（`beted_date`，UTC+8 当日 00:00）裁切，须介于区间起日前一天至区间结束日。下注逾一天后才变动的单不在结果内，改用 `/bet_rec/query` 按单号查 |
 | `/jp_rec/list` | `created_at` |
-| `/bet_report/list` | `beted_date` 或 `settled_date`／分钟，值为 UTC+8（`Asia/Shanghai`）当日 00:00 的 Unix 秒 |
-| `/scratch_card_rec/list` | `updated_at` |
+| `/bet_report/list` | `beted_date` 或 `settled_date`／分钟字段，值为 UTC+8（`Asia/Shanghai`）当日 00:00 的 Unix 秒 |
+| `/scratch_card_rec/list` | `updated_at`（状态变更时间） |
 | `/transfer/list` | `created_at` |
 | `/free_round/list` | `created_at` |
 
-下列接口每商户每分钟 10 次：`/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`。超出为 `TOO_MANY_REQUESTS`。其余接口不限流。
-
-`acc` 不含前缀；省略或空字符串表示不筛玩家。
+速率限制见 [G4](/zh-CN/protocol#g4)，保留期限见 [G5](/zh-CN/protocol#g5)。
 
 ## POST `/game/list`
 
-仅返回 `is_active=true` 的游戏。维护中游戏仍出现在清单，登录时才返回 `GAME_MAINTAIN`。响应 `list[]`：`id`（integer）、`code`（登录 `game_code`）、`name`（object，键为 [语系](/zh-CN/enums#lang)）、[游戏类别](/zh-CN/enums#game-category)、`game_type_code`。
+仅返回 `is_active=true` 的游戏。
+
+<Card title="请求" icon="arrow-up-from-bracket">
+内层可为 `{}`。
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `list` | array | 游戏清单 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | integer | 内部标识 |
+| `code` | string | 游戏代码，对应登录 `game_code` |
+| `name` | object | 多语言名称，键为 [语系](/zh-CN/enums#lang) |
+| `game_category_code` | string | [游戏类别](/zh-CN/enums#game-category) |
+| `game_type_code` | string | 类型代码 |
+</Card>
 
 ## POST `/bet_rec/list`
 
-请求：`page`、`perpage` 1–1000、`start_at`、`end_at`，可选 `acc`。
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `page` | 是 | integer | ≥ 1 |
+| `perpage` | 是 | integer | 1–1000 |
+| `start_at` | 是 | integer | 变动时间下界，Unix 秒（`updated_at`） |
+| `end_at` | 是 | integer | 变动时间上界，须大于 `start_at` |
+| `acc` | 否 | string | 筛选玩家 |
+</Card>
 
-响应 `row_count`、`page_count`、`list[]`：
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `row_count` | integer | 总条数 |
+| `page_count` | integer | 总页数 |
+| `list` | array | 注单列 |
+
+`list[]`：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -36,61 +69,231 @@ description: 注单、JP、报表、刮刮卡。
 | `round_sn` | string | 局号 |
 | `game_category_code` | string | [游戏类别](/zh-CN/enums#game-category) |
 | `game_type_code` | string | 类型 |
-| `game_code` | string | 游戏 |
+| `game_code` | string | 游戏代码 |
 | `acc` | string | 完整账号 |
 | `player_acc` | string | 不含前缀 |
 | `bet_amount` | number | 投注额 |
 | `win_amount` | number | 派奖额 |
 | `valid_amount` | number | 有效投注。未结算（`PENDING`）与退款（`REFUND`）注单一律为 0 |
-| `result` | number | 输赢。已结算（`FINISH`）为派奖 − 投注；未结算与退款注单一律为 0（**不是** −投注额） |
+| `result` | number | 输赢。已结算（`FINISH`）为派奖 − 投注；未结算与退款注单一律为 0，不是 −投注额 |
 | `free_game_type` | string | [免费游戏](/zh-CN/enums#free-game-type) |
-| `beted_at` | integer | 下注时间 |
-| `settled_at` | integer | 结算时间；未结算可为 0 |
+| `beted_at` | integer | 下注时间，Unix 秒 |
+| `settled_at` | integer | 结算时间，Unix 秒；未结算可为 0 |
 | `status` | string | [注单状态](/zh-CN/enums#bet-status) |
-| `agent` / `member` | object | 摘要 |
-| `slot_bet_detail` | object | 游戏端明细 |
-
-赠送旋转产生的注单仍在本列表，`bet_amount` 为名义注额。本接口不另给「是否赠送」字段。
+| `agent` | object | 商户摘要 |
+| `member` | object | 玩家摘要 |
+| `slot_bet_detail` | object | 游戏端明细，结构随游戏而异 |
+</Card>
 
 ## POST `/bet_rec/detail`
 
-请求：`sn`、`lang`（[语系](/zh-CN/enums#lang)）。响应 `data.url`：牌面结果页 URL。
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `sn` | 是 | string | 注单号，长度 ≤ 120 |
+| `lang` | 是 | string | BCP 47。[语系](/zh-CN/enums#lang) |
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `url` | string | 牌面结果页 URL |
+
+```json
+{
+  "code": "OK",
+  "data": { "url": "https://lobby.example/gameResult?sn=SGP...&lang=zh-TW&is_jp=0" }
+}
+```
+</Card>
 
 ## POST `/bet_rec/query`
 
-请求：`sns`（1–100）。外层 `code` 仍为 `OK`。`list[]` 与请求等长；每一列都有 `code`。有单：`code` `OK` + `status`（[注单状态](/zh-CN/enums#bet-status)）。无单：`code` `BET_NOT_FOUND`，无 `status`。先看该列 `code`。列上 `BET_NOT_FOUND` 不得据此自动退款。
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `sns` | 是 | string[] | 1–100 个单号 |
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `list` | array | 与请求 `sns` 等长、顺序相同 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | 查询的单号 |
+| `code` | string | 每一列都有。有单为 `OK`，无单为 `BET_NOT_FOUND` |
+| `status` | string | 仅当该列 `code` 为 `OK`：[注单状态](/zh-CN/enums#bet-status)。无单时无此字段 |
+
+外层 `code` 为 `OK` 表示本包请求成功。该列 `code` 为 `OK` 才读 `status`。
+
+```json
+{
+  "code": "OK",
+  "data": {
+    "list": [
+      { "sn": "A", "code": "OK", "status": "PENDING" },
+      { "sn": "B", "code": "OK", "status": "FINISH" },
+      { "sn": "C", "code": "OK", "status": "REFUND" },
+      { "sn": "D", "code": "BET_NOT_FOUND" }
+    ]
+  }
+}
+```
+
+列上 `BET_NOT_FOUND` 的处置见 [G3](/zh-CN/protocol#g3)。
+</Card>
 
 ## POST `/bet_report/list`
 
-<Warning>
-汇总数据保留 **60 天**，更早的区间返回空列表（`code` 为 `OK`、`row_count` 为 0）。
-`/bet_rec/list` 不受此限。
-</Warning>
-
-`time_unit` 两轴的统计母体不同，不应互相加总或对账：
+`time_unit` 两轴的统计母体不同：
 
 | `time_unit` | 涵盖的注单 |
 |---|---|
 | `bet` | 该期间所有落库注单，含未结算与已退款（其 `win_amount`／`result` 为 0） |
 | `settle` | 仅已结算（`FINISH`）注单 |
 
-请求：`report_unit`（[汇总周期](/zh-CN/enums#report-unit)）、`time_unit`（[时间轴](/zh-CN/enums#time-unit)）。
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `page` | 是 | integer | ≥ 1 |
+| `perpage` | 是 | integer | 1–1000 |
+| `start_at` / `end_at` | 是 | integer | Unix 秒 |
+| `report_unit` | 是 | string | [汇总周期](/zh-CN/enums#report-unit) |
+| `time_unit` | 是 | string | [时间轴](/zh-CN/enums#time-unit) |
+| `acc` | 否 | string | 筛选玩家 |
+</Card>
 
-响应 `list[]`：`datetime`、`bet_count`、`bet_member_count`、`bet_amount`、`valid_amount`、`win_amount`、`result`。
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `row_count` | integer | 总列数 |
+| `page_count` | integer | 总页数 |
+| `list` | array | 汇总列 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `datetime` | string | 时间桶 |
+| `bet_count` | integer | 注单数 |
+| `bet_member_count` | integer | 下注人数 |
+| `bet_amount` | number | 投注额 |
+| `valid_amount` | number | 有效投注 |
+| `win_amount` | number | 派奖额 |
+| `result` | number | 平台输赢 |
+</Card>
 
 ## POST `/jp_rec/list`
 
-`list[]`：`sn`、[游戏类别](/zh-CN/enums#game-category)、`game_type_code`、`game_code`、[JP 类型](/zh-CN/enums#jp-type)、`desk_id`、`acc`、`player_acc`、`bet_amount`、`amount`（JP 派奖）、`beted_at`、`settled_at`、`agent`、`member`、`slot_bet_detail`。
+<Card title="请求" icon="arrow-up-from-bracket">
+字段同 `/bet_rec/list`。
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `row_count` | integer | 总条数 |
+| `page_count` | integer | 总页数 |
+| `list` | array | JP 列 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | 单号 |
+| `game_category_code` | string | [游戏类别](/zh-CN/enums#game-category) |
+| `game_type_code` | string | 类型 |
+| `game_code` | string | 游戏 |
+| `jp_type` | string | [JP 类型](/zh-CN/enums#jp-type) |
+| `desk_id` | string | 桌号，可为空 |
+| `acc` | string | 完整账号 |
+| `player_acc` | string | 不含前缀 |
+| `bet_amount` | number | 触发该 JP 的投注 |
+| `amount` | number | JP 派奖 |
+| `beted_at` | integer | 下注时间，Unix 秒 |
+| `settled_at` | integer | 结算时间，Unix 秒 |
+| `agent` | object | 商户摘要 |
+| `member` | object | 玩家摘要 |
+| `slot_bet_detail` | object | 游戏端明细 |
+</Card>
 
 ## POST `/jp_rec/detail`
 
-响应 `data.url`（`is_jp=1`）。
+<Card title="请求" icon="arrow-up-from-bracket">
+字段同 `/bet_rec/detail`。
+</Card>
+
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `url` | string | JP 牌面结果页 URL（`is_jp=1`） |
+</Card>
 
 ## POST `/scratch_card_rec/list`
 
-`list[]`：`sn`（`SC_{id}`）、`activity_name`、`card_code`、`card_name`、`prize_level`、`prize_amount`、`status`（[刮刮卡状态](/zh-CN/enums#scratch-status)）、`player_acc`、`member`（可为 null）、`claimed_at`、`scratched_at`。请求可选 `lang`（[语系](/zh-CN/enums#lang)）。
+<Card title="请求" icon="arrow-up-from-bracket">
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `page` / `perpage` | 是 | integer | `perpage` 1–1000 |
+| `start_at` / `end_at` | 是 | integer | Unix 秒 |
+| `status` | 否 | string | [刮刮卡状态](/zh-CN/enums#scratch-status) |
+| `acc` | 否 | string | 筛选玩家 |
+| `lang` | 否 | string | [语系](/zh-CN/enums#lang)。省略时为 `zh-TW` |
+</Card>
 
-`summary`：`total_count`（integer），以及 `pending_count`、`claimed_count`、`scratched_count`、
-`total_prize`、`scratched_prize`（已派奖金）——后五个为**字符串**
-（例如 `"pending_count": "1"`、`"total_prize": "150.5000"`）；区间内无票券时，
-三个 `*_count` 为空字符串 `""`。
+<Card title="响应" icon="arrow-down-to-bracket">
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `row_count` | integer | 总条数 |
+| `page_count` | integer | 总页数 |
+| `list` | array | 票券列 |
+| `summary` | object | 同筛选范围的统计，不受 `status` 限制 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | `SC_{id}` |
+| `activity_name` | string | 活动名称 |
+| `card_code` | string | 卡面代码 |
+| `card_name` | string | 卡面名称 |
+| `prize_level` | string | 奖项等级 |
+| `prize_amount` | number | 奖金 |
+| `status` | string | [刮刮卡状态](/zh-CN/enums#scratch-status) |
+| `player_acc` | string | 不含前缀；未领取可为空 |
+| `member` | object \| null | 玩家摘要；未领取为 null |
+| `claimed_at` | integer | 领取时间，Unix 秒 |
+| `scratched_at` | integer | 刮开时间，Unix 秒 |
+
+`summary`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `total_count` | integer | 票数 |
+| `pending_count` | string | 未领取。十进制数字字符串；区间内无票券时为 `""` |
+| `claimed_count` | string | 已领未刮。十进制数字字符串；区间内无票券时为 `""` |
+| `scratched_count` | string | 已刮。十进制数字字符串；区间内无票券时为 `""` |
+| `total_prize` | string | 奖金合计。十进制数字字符串，四位小数 |
+| `scratched_prize` | string | 已派奖金，对账数。十进制数字字符串，四位小数 |
+
+```json
+{
+  "total_count": 3,
+  "pending_count": "1",
+  "claimed_count": "1",
+  "scratched_count": "1",
+  "total_prize": "150.5000",
+  "scratched_prize": "50.0000"
+}
+```
+</Card>
+
+## 约束 {#constraints}
+
+1. `/bet_report/list` 两个 `time_unit` 母体不同，不得互相加总或对账。
+2. 赠送旋转产生的注单仍在 `/bet_rec/list`，`bet_amount` 为名义注额。本接口不另给「是否赠送」字段。
+3. 维护中游戏仍出现于 `/game/list`，登录时才返回 `GAME_MAINTAIN`。

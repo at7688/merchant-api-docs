@@ -1,6 +1,6 @@
 ---
 title: Protocol
-description: Envelope, AES-256-GCM, HTTP vs code.
+description: Envelope, AES-256-GCM, HTTP, code, and the general rules.
 ---
 
 ## Request
@@ -10,23 +10,21 @@ description: Envelope, AES-256-GCM, HTTP vs code.
 | Method | `POST` |
 | Header | `Content-Type: application/json` |
 | Encoding | UTF-8 |
-| URL | `{base}{path}` |
+| URL | `{base}{path}`, e.g. `https://api.at-dev.app/api/v1/player/add` |
 | Path prefix | `/api/v1` |
-| Extra headers | None. Client IP is `CF-Connecting-IP`, else `X-Forwarded-For` / peer, and must be whitelisted |
+| Extra headers | None. Client IP is `CF-Connecting-IP`, else `X-Forwarded-For` / peer, and must satisfy [G6](#g6) |
 
 ## Conventions
 
 | Item | Rule |
 |---|---|
-| `agent_acc` | Trimmed, lowercased |
-| `acc` | Trimmed, lowercased, stored as `{agent_acc}_{acc}` |
-| `game_code` | Trimmed, uppercased |
-| Time | Unix **seconds**. Accounting day cut is **UTC+8** (`Asia/Shanghai`) 00:00 |
-| Amounts | JSON numbers, up to 2 decimal places |
-| Optional filters | Empty string or 0 means “do not apply” |
+| `agent_acc` | Lowercased and trimmed before matching |
+| `acc` | Trimmed, lowercased, then combined with the agent account as `{agent_acc}_{acc}` |
+| `game_code` | Trimmed and uppercased. Applies to login and granted spins |
+| Time | Unix seconds (10 digits). The accounting day cut is UTC+8 (`Asia/Shanghai`) 00:00 |
+| Amounts | JSON number. Up to 2 decimal places (database `DECIMAL`) |
+| Optional filters | Empty string or 0 means the condition is not applied |
 | Malformed request | Outer or inner JSON unparseable, wrong field type, or failed validation — all return `PARAM_INVALID` |
-
-Callback URL is `{MerchantApiUrl}/player/bet`. The base must **not** end with `/`.
 
 ### Outer body
 
@@ -39,12 +37,12 @@ Callback URL is `{MerchantApiUrl}/player/bet`. The base must **not** end with `/
 
 | Field | Required | Type | Constraints |
 |---|---|---|---|
-| `agent_acc` | yes | string | alphanum, ≤ 60 |
-| `data` | yes | string | hex of the encrypted inner JSON |
+| `agent_acc` | yes | string | alphanumeric, ≤ 60, matching a back-office agent account |
+| `data` | yes | string | hex of the encrypted inner plaintext |
 
 ### Inner body
 
-UTF-8 JSON object, snake_case. Those bytes are the GCM plaintext.
+UTF-8 JSON object, fields in snake_case. Those bytes are the GCM plaintext. Example:
 
 ```json
 {"acc":"jordan","name":"Amy"}
@@ -56,15 +54,15 @@ UTF-8 JSON object, snake_case. Those bytes are the GCM plaintext.
 |---|---|
 | Algorithm | AES-256-GCM |
 | Key | ApiKey decoded from hex, 32 bytes |
-| nonce | 12 bytes, unique per request |
+| nonce | 12 bytes, random per request, never reused |
 | tag | 16 bytes |
 | Layout | `nonce ‖ ciphertext ‖ tag`, then hex |
 
-Seamless-wallet callbacks use the same key and layout. The platform body is only `{ "data": "<hex>" }` — no `agent_acc`. Timeout 15 seconds. The merchant response must be JSON with top-level `code`. HTTP status must be 2xx or the outcome is treated as undetermined.
+Seamless-wallet callbacks use the same key and the same layout. The envelope is on [callbacks](/en/callback).
 
-### Reference vector
+### Reference vector {#vectors}
 
-Verification only — not a production key. Plaintext `{"acc":"jordan","name":"Amy"}` with no whitespace.
+The plaintext is `{"acc":"jordan","name":"Amy"}` with no whitespace and no newlines.
 
 | | hex |
 |---|---|
@@ -99,7 +97,7 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 ## Response
 
-All successful merchant APIs use this envelope. Per-endpoint `data` fields are on each page.
+Every endpoint returns this envelope on success. The `data` fields are on each endpoint page.
 
 ```json
 {
@@ -113,13 +111,13 @@ All successful merchant APIs use this envelope. Per-endpoint `data` fields are o
 
 | Field | Type | Description |
 |---|---|---|
-| `api_version` | string | Currently `v1` |
+| `api_version` | string | API version, currently `v1` |
 | `message` | string | Extra text; usually empty |
-| `code` | string | Outcome. Success is only `OK` |
-| `data` | object \| array \| null | Payload on success; usually `null` on error, though a few errors carry a diagnostic object (see [errors](/en/errors)) |
-| `trace_id` | string | Request id for logs and incidents |
+| `code` | string | Business outcome. Success is only `OK` |
+| `data` | object \| array \| null | Payload on success. Usually `null` on error; a few errors carry a diagnostic object (see [error codes](/en/errors)) |
+| `trace_id` | string | Request id, used for reconciliation and incident reports |
 
-Outcome is `code`.
+The outcome is `code`. Every `code`, `PARAM_INVALID` and `TOO_MANY_REQUESTS` included, is returned with HTTP 200.
 
 ### HTTP status
 
@@ -127,10 +125,81 @@ Outcome is `code`.
 |---|---|
 | `200` | The request was processed. Read `code` for the outcome |
 | `404` | Unknown path |
-| `500` | Outcome undetermined; the body may not be JSON |
+| `500` | Outcome undetermined; the body may not be JSON. Handling is in [G3](#g3) |
 
-<Warning>
-Every `code` in these docs, `PARAM_INVALID` and `TOO_MANY_REQUESTS` included, is returned with **HTTP 200**.
-</Warning>
+## General rules
 
-HTTP 500 means the outcome is undetermined. Transfers: `/transfer/check` with the same `sn`. Seamless: merchant ledger and `/bet_rec/query`. Reversals must not be assumed.
+These six rules span multiple endpoints. Endpoint pages cite them by number.
+
+### G1 Idempotency key {#g1}
+
+| Item | Rule |
+|---|---|
+| Key | `sn`. `/transfer/add`, `/free_round/add` and seamless `bet` / `win` / `refund` all detect duplicates by `sn` |
+| First receipt | Executed, and the result persisted |
+| Duplicate, first attempt succeeded | The first result is returned; the balance does not change |
+| Duplicate, first attempt rejected | The first error `code` is returned |
+| Merchant de-duplication records | Kept at least 90 days |
+
+### G2 Callback resends {#g2}
+
+The same packet is not resent at the moment of a timeout. The same `sn` may receive a later callback:
+
+| Case | Later callback |
+|---|---|
+| `/player/bet` outcome undetermined | `/player/refund` (automatic or operator resend) |
+| `/player/win` did not succeed (ordinary bet) | Another `/player/win` (game retry or operator resend) |
+| `/player/win` did not succeed (tournament payout) | No automatic resend; an operator resends it. Not resent if the merchant rejected it with an error `code` |
+| Stuck bet cancelled after timeout | `/player/refund` |
+
+Automatic resends of `/player/refund`:
+
+| Item | Rule |
+|---|---|
+| First interval | 60 seconds |
+| Backoff | 60 × 2^n seconds, one interval capped at 1 hour |
+| Total window | 24 hours |
+| After 24 hours | Automatic resends stop and the item becomes pending-overdue; an operator resends it or closes it manually, with no deadline |
+
+`/player/win` may arrive after the player goes offline.
+
+### G3 Undetermined outcome {#g3}
+
+HTTP 500, a dropped connection or a timeout: success or failure must not be assumed, and a reversal must not be posted.
+
+| Context | Rule |
+|---|---|
+| `/transfer/add` | Call `/transfer/check` with the original `sn`. A row means it is posted; a new `sn` is allowed only after `TRANSFER_NOT_FOUND` |
+| Seamless | The merchant ledger for that `sn` is authoritative, reconciled with `/bet_rec/query` |
+| Other endpoints | Retries may reuse the original parameters |
+
+A `BET_NOT_FOUND` item in `/bet_rec/query` must not trigger an automatic refund. A transfer `sn` must not be replaced.
+
+### G4 Rate limits {#g4}
+
+| Endpoint | Limit |
+|---|---|
+| `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list`, `/scratch_card_rec/list` | 10 per merchant per minute |
+| Other endpoints | Not rate limited |
+
+Exceeding the limit returns `TOO_MANY_REQUESTS`.
+
+### G5 Data retention {#g5}
+
+| Subject | Period |
+|---|---|
+| Aggregates (`/bet_report/list`) | 60 days. An earlier window returns an empty list (`code` is `OK`, `row_count` is 0) |
+| Bets (`/bet_rec/list`, `/bet_rec/query`) | Not subject to the 60-day limit |
+| Merchant-side `sn` de-duplication records | At least 90 days |
+| Granted spins with no `expire_at` | 30 days from the grant |
+
+### G6 Key and source address {#g6}
+
+| Item | Rule |
+|---|---|
+| ApiKey | Server-side only |
+| Reference vector key | Not usable as a production key |
+| Source IP | Must be on the merchant whitelist, otherwise `IP_NOT_ALLOWED` is returned |
+| Whitelist matching | Exact match per IP address; ranges and CIDR are not supported. Each egress address is registered individually, including every address in a NAT pool |
+| IPv6 | Must be literally identical to the source address |
+| Incident reports | Provide the environment, path, `agent_acc`, `trace_id` and UTC time, without the ApiKey |

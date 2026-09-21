@@ -3,16 +3,29 @@ title: 转账
 description: 转账钱包上分与下分。
 ---
 
-适用于转账钱包。`sn` 为幂等键。成功报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 见页末。
+适用于转账钱包。成功时外层报文见 [传输协议](/zh-CN/protocol)。`agent`／`member` 对象字段见页末。幂等见 [G1](/zh-CN/protocol#g1)，结果未决见 [G3](/zh-CN/protocol#g3)。
+
+| 项目 | 约束 |
+|---|---|
+| `sn` | 英数与 `_` `-`，6–120。同一商户内唯一 |
+| `acc` | 玩家账号，不含前缀 |
+| `amount` | 不得为 0。正数＝上分（商户 → 平台），负数＝下分（平台 → 商户） |
+| 时间 | Unix 秒 |
 
 ## POST `/transfer/add`
 
 <Card title="请求" icon="arrow-up-from-bracket">
 | 字段 | 必填 | 类型 | 说明 |
 |---|---|---|---|
-| `sn` | 是 | string | 商户订单号，6–120 |
-| `acc` | 是 | string | 玩家账号，不含前缀 |
-| `amount` | 是 | number | 不为 0。正数上分，负数下分 |
+| `sn` | 是 | string | 商户订单号，不可重复用于不同业务 |
+| `acc` | 是 | string | 玩家账号 |
+| `amount` | 是 | number | 上分为正、下分为负 |
+
+```json
+{ "sn": "T20260917-0001", "acc": "jordan", "amount": 100 }
+```
+
+下分：`"amount": -50`。
 </Card>
 
 <Card title="响应" icon="arrow-down-to-bracket">
@@ -21,13 +34,18 @@ description: 转账钱包上分与下分。
 | `currency` | string | [币种](/zh-CN/enums#currency) |
 | `balance` | number | 本笔完成后的平台余额 |
 
-| code | 说明 |
-|---|---|
-| `TRANSFER_SN_EXIST` | 该 `sn` 已入账；调用 `/transfer/check` |
-| `BALANCE_INSUFFICIENT` | 下分余额不足 |
-| `ACC_NOT_FOUND` | 玩家不存在 |
+```json
+{
+  "code": "OK",
+  "data": { "currency": "TWD", "balance": 100 }
+}
+```
 
-HTTP 500：以原 `sn` 调用 `/transfer/check`。
+| code | 说明 | 处理 |
+|---|---|---|
+| `TRANSFER_SN_EXIST` | 该 `sn` 已成功入账。非失败 | 调用 `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | 下分余额不足，未入账 | |
+| `ACC_NOT_FOUND` | 玩家不存在，未入账 | |
 </Card>
 
 ## POST `/transfer/check`
@@ -35,26 +53,42 @@ HTTP 500：以原 `sn` 调用 `/transfer/check`。
 <Card title="请求" icon="arrow-up-from-bracket">
 | 字段 | 必填 | 类型 | 说明 |
 |---|---|---|---|
-| `sn` | 是 | string | |
-| `acc` | 是 | string | |
+| `sn` | 是 | string | 原转账单号 |
+| `acc` | 是 | string | 玩家账号 |
+
+```json
+{ "sn": "T20260917-0001", "acc": "jordan" }
+```
 </Card>
 
 <Card title="响应" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `sn` | string | 转账单号 |
-| `amount` | number | 金额 |
+| `amount` | number | 该笔金额（正上分，负下分） |
 | `balance` | number | 该笔完成当时的平台余额 |
-| `created_at` | integer | Unix 秒 |
-| `agent` | object | 商户摘要 |
-| `member` | object | 玩家摘要 |
+| `created_at` | integer | 入账时间，Unix 秒 |
+| `agent` | object | 商户摘要，见页末 |
+| `member` | object | 玩家摘要，见页末 |
 
-无记录：`TRANSFER_NOT_FOUND`。
+```json
+{
+  "code": "OK",
+  "data": {
+    "sn": "T20260917-0001",
+    "amount": 100,
+    "balance": 100,
+    "created_at": 1758723906,
+    "agent": { "id": 1, "acc": "kiwi01", "name": "Kiwi", "player_type": "AGENT", "currency": "TWD" },
+    "member": { "id": 123, "acc": "kiwi01_jordan", "name": "Amy", "player_type": "MEMBER", "currency": "TWD" }
+  }
+}
+```
 
 | code | 说明 | 处理 |
 |---|---|---|
 | `TRANSFER_NOT_FOUND` | 无此转账 | 前次为 HTTP 500 时，间隔后再查；仍无则可使用新 `sn` |
-| `ACC_NOT_FOUND` | 查询用的 `acc` 对不到玩家 | 查询无效，不代表未入账。须以原 `/transfer/add` 的 `acc` 重查。不得换新 `sn` |
+| `ACC_NOT_FOUND` | 查询用的 `acc` 对不到玩家 | 以原 `/transfer/add` 的 `acc` 重查 |
 </Card>
 
 ## POST `/transfer/list`
@@ -64,16 +98,33 @@ HTTP 500：以原 `sn` 调用 `/transfer/check`。
 |---|---|---|---|
 | `page` | 是 | integer | ≥ 1 |
 | `perpage` | 是 | integer | 1–100 |
-| `start_at` | 是 | integer | 起始 Unix 秒 |
+| `start_at` | 是 | integer | 起始 Unix 秒（`created_at`） |
 | `end_at` | 是 | integer | 结束 Unix 秒，须大于 `start_at` |
 | `acc` | 否 | string | 筛选玩家 |
 </Card>
 
 <Card title="响应" icon="arrow-down-to-bracket">
-`row_count`、`page_count`（integer），`list[]`：`sn`、`amount`、`balance`、`created_at`、`agent`、`member`。
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `row_count` | integer | 符合条件的总笔数 |
+| `page_count` | integer | 总页数 |
+| `list` | array | 转账记录，新至旧 |
+
+`list[]`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sn` | string | 转账单号 |
+| `amount` | number | 金额 |
+| `balance` | number | 该笔完成当时的余额 |
+| `created_at` | integer | Unix 秒 |
+| `agent` | object | 商户摘要 |
+| `member` | object | 玩家摘要 |
 </Card>
 
 ## 对象 `agent`／`member`
+
+`Player.Profile()`：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -82,3 +133,8 @@ HTTP 500：以原 `sn` 调用 `/transfer/check`。
 | `name` | string | 显示名称 |
 | `player_type` | string | [账号类型](/zh-CN/enums#player-type) |
 | `currency` | string | [币种](/zh-CN/enums#currency) |
+
+## 约束 {#constraints}
+
+1. `/transfer/check` 返回 `ACC_NOT_FOUND` 表示该次查询无效，不表示未入账。
+2. `/transfer/add` 返回 HTTP 500 后，须以原 `sn` 查证，见 [G3](/zh-CN/protocol#g3)。

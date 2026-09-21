@@ -9,11 +9,11 @@ description: 转账钱包对接顺序。
 
 ## 对接顺序
 
-1. 取得 `agent_acc`、ApiKey；将调用源 IP 列入白名单。
-2. 实现 AES-256-GCM（见协议参考向量）。
+1. 取得 `agent_acc`、ApiKey；将调用源 IP 列入白名单（[G6](/zh-CN/protocol#g6)）。
+2. 实现 AES-256-GCM，见 [参考向量](/zh-CN/protocol#vectors)。
 3. `POST /player/add` 创建玩家。`acc` 不含代理前缀。
-4. `POST /transfer/add` 上分。`sn` 为幂等键；HTTP 500 时以原 `sn` 调用 `/transfer/check`。
+4. `POST /transfer/add` 上分。幂等见 [G1](/zh-CN/protocol#g1)；HTTP 500 的处置见 [G3](/zh-CN/protocol#g3)。
 5. `POST /player/login` 取得大厅或游戏 URL。
 6. 对账：`/transfer/check`、`/transfer/list`、`/bet_rec/*`。
 
-后续接口：[玩家](/zh-CN/player)、[转账](/zh-CN/transfer)、[记录](/zh-CN/records)、[免费旋转](/zh-CN/free-round)。
+后续接口：[玩家](/zh-CN/player)、[转账](/zh-CN/transfer)、[记录](/zh-CN/records)、[赠送旋转](/zh-CN/free-round)。

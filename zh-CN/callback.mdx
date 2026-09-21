@@ -3,17 +3,23 @@ title: 回调
 description: 平台对商户的回调。超时 15 秒。
 ---
 
-适用于单一钱包。平台对 `{MerchantApiUrl}{path}` 发出 `POST`，例如 `https://merchant.example/player/bet`。base 不得以 `/` 结尾。报文 `{ "data": "<hex>" }`，不含 `agent_acc`。密钥与商户 ApiKey 相同。见 [传输协议](/zh-CN/protocol)。超时 15 秒。响应须为 JSON，顶层含 `code`。bet／win 的 `data.original_balance`、`data.balance` 为 number。
+适用于单一钱包。平台对 `{MerchantApiUrl}{path}` 发出 `POST`，例如 `https://merchant.example/player/bet`。
 
-<Warning>
-成功时 `code` 为 `OK`。
-</Warning>
+```json
+{ "data": "<AES-GCM hex>" }
+```
 
-超时 15 秒。当时不立即重发同一封包。之后仍可能对**同一 `sn`** 再发 `/player/win` 或 `/player/refund`（结算重试、值班补送、卡住注退款）。例外：**锦标赛**派彩失败后不自动重送，由值班补送（商户以错误 `code` 拒绝者不补送）。赠送旋转消耗时不发 `/player/bet`，结算仍可能 `/player/win`（`amount` 可为 0）。`bet`／`win`／`refund` 的 `acc` 不含前缀；仅 `balance` 同时给完整 `acc` 与 `player_acc`。以 `sn` 幂等。玩家掉线后仍可能收到 `/player/win`。
+| 项目 | 规定 |
+|---|---|
+| `MerchantApiUrl` | 与路径直接拼接，不得以 `/` 结尾 |
+| 请求报文 | 仅 `data`，无 `agent_acc` |
+| 加解密 | 与商户 API 同一 ApiKey、同一排列，见 [传输协议](/zh-CN/protocol) |
+| `Content-Type` | `application/json` |
+| 超时 | 15 秒，含连接与读取 |
+| 商户响应 | JSON，顶层必有 `code`。成功为 `OK`。其余顶层字段忽略 |
+| 商户 HTTP 状态 | 须为 2xx，否则平台视为结果未决 |
 
-<Warning>
-`sn` 去重记录至少保留 **90 天**。值班补送无时效上限。
-</Warning>
+幂等见 [G1](/zh-CN/protocol#g1)，重发见 [G2](/zh-CN/protocol#g2)，结果未决见 [G3](/zh-CN/protocol#g3)。
 
 ## POST `{base}/player/balance`
 
@@ -21,18 +27,24 @@ description: 平台对商户的回调。超时 15 秒。
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `timestamp` | integer | Unix 秒 |
-| `acc` | string | 含代理前缀 |
+| `acc` | string | 完整账号，含代理前缀 |
 | `player_acc` | string | 不含前缀 |
 </Card>
 
 <Card title="响应" icon="arrow-up-from-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `code` | string | `"OK"` |
+| `code` | string | 成功为 `"OK"` |
 | `data.balance` | number | 商户侧当前余额 |
+
+```json
+{ "code": "OK", "data": { "balance": 1680.4 } }
+```
 </Card>
 
 ## POST `{base}/player/bet`
+
+扣款。
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
@@ -40,33 +52,36 @@ description: 平台对商户的回调。超时 15 秒。
 | `timestamp` | integer | Unix 秒 |
 | `sn` | string | 幂等键 |
 | `game_code` | string | 游戏代码 |
-| `acc` | string | 不含前缀 |
+| `acc` | string | 玩家账号，不含前缀 |
 | `name` | string | 显示名称 |
 | `amount` | number | 扣除额（正数） |
-| `beted_at` | integer | 下注时间 |
+| `beted_at` | integer | 下注时间，Unix 秒 |
 </Card>
 
 <Card title="响应" icon="arrow-up-from-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `code` | string | `"OK"`；余额不足为 `BALANCE_INSUFFICIENT` |
+| `code` | string | 成功 `"OK"`；余额不足 `BALANCE_INSUFFICIENT` |
 | `data.original_balance` | number | 扣款前余额 |
 | `data.balance` | number | 扣款后余额 |
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 1000, "balance": 900 }
+}
+```
 </Card>
 
 ## POST `{base}/player/win`
 
 加款。`game_code` 有三种来源：
 
-| `game_code` | `sn` 形式 | 是否有前置 `/player/bet` | 对账方式 |
+| `game_code` | `sn` 形式 | 前置 `/player/bet` | 对账方式 |
 |---|---|---|---|
 | `/game/list` 的 `code` | 注单单号 | 有 | `/bet_rec/query` |
-| [`TOURNAMENT`](/zh-CN/enums#game-code) | `TOUR_{赛事id}_{名次}_{会员id}` | 无 | 目前无查询接口，以商户自身账本为准 |
+| [`TOURNAMENT`](/zh-CN/enums#game-code) | `TOUR_{赛事id}_{名次}_{会员id}` | 无 | 无查询接口，以商户账本为准 |
 | [`SCRATCH_CARD`](/zh-CN/enums#game-code) | `SC_{票券id}` | 无 | [`/scratch_card_rec/list`](/zh-CN/records) |
-
-<Warning>
-`TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 内，亦不在 `/bet_rec/query` 内；不得据此拒收。
-</Warning>
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
@@ -77,7 +92,8 @@ description: 平台对商户的回调。超时 15 秒。
 | `acc` | string | 不含前缀 |
 | `name` | string | 显示名称 |
 | `amount` | number | 增加额，≥ 0（含未中奖） |
-| `beted_at` / `settled_at` | integer | Unix 秒 |
+| `beted_at` | integer | 下注时间，Unix 秒 |
+| `settled_at` | integer | 结算时间，Unix 秒 |
 </Card>
 
 <Card title="响应" icon="arrow-up-from-bracket">
@@ -86,15 +102,24 @@ description: 平台对商户的回调。超时 15 秒。
 | `code` | string | `"OK"` |
 | `data.original_balance` | number | 加款前余额 |
 | `data.balance` | number | 加款后余额 |
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 900, "balance": 1400 }
+}
+```
 </Card>
 
 ## POST `{base}/player/refund`
+
+退回同一 `sn` 的 `/player/bet` 实际扣下的金额。
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `timestamp` | integer | Unix 秒 |
-| `sn` | string | 对应 bet 单号 |
+| `sn` | string | 对应 bet 的单号 |
 | `game_code` | string | 游戏代码 |
 | `acc` | string | 不含前缀 |
 | `name` | string | 显示名称 |
@@ -104,17 +129,16 @@ description: 平台对商户的回调。超时 15 秒。
 <Card title="响应" icon="arrow-up-from-bracket">
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `code` | string | `"OK"`。已退过仍回 `OK` |
+| `code` | string | `"OK"`。已退过仍回 `OK`，余额不变 |
 | `data` | object \| omitted | 可省略 |
+
+```json
+{ "code": "OK" }
+```
 </Card>
 
-<Warning>
-`refund` 仅退回同一 `sn` 的 `/player/bet` 实际扣下的金额。商户从未收到该 `sn` 的 bet，或曾以错误 `code` 拒绝，须回 `OK` 且不得加款。平台在 bet 结果未决时即发 `refund`，该 bet 可能从未到达商户。
-</Warning>
+## 约束 {#constraints}
 
-### 重试与时限
-
-未收到 `OK` 时对**同一 `sn`** 自动重送：首次 60 秒，指数退避（60 × 2^n 秒），单次间隔上限
-1 小时，总时限 **24 小时**。
-
-逾 24 小时停止自动重送，转为「超时待处理」，改由值班重送或人工结案，时间不定。
+1. `TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 内，亦不在 `/bet_rec/query` 内。不得据此拒收。
+2. `/player/refund`：商户未曾收到该 `sn` 的 bet，或曾以错误 `code` 拒绝者，回 `OK` 且不得加款。
+3. 赠送旋转消耗时不发 `/player/bet`，结算仍可能发 `/player/win`（`amount` 可为 0）。见 [赠送旋转](/zh-CN/free-round)。

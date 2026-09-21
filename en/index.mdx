@@ -5,7 +5,7 @@ description: Environments, wallet models, and account rules.
 
 The AT Gaming merchant API covers player accounts, funds, game entry, and reporting. All calls are `HTTPS` `POST` with `Content-Type: application/json; charset=utf-8`. Inner parameters are AES-256-GCM encrypted into outer `data`. See [Protocol](/en/protocol).
 
-Select a wallet model. Encryption and the response envelope are shared; funding interfaces differ.
+Select the integration path by wallet model. Encryption and the response envelope are identical in both models; the funding interfaces differ.
 
 <CardGroup cols={2}>
   <Card title="Transfer wallet" href="/en/transfer-guide">
@@ -23,12 +23,6 @@ Select a wallet model. Encryption and the response envelope are shared; funding 
 | Test | `https://api.at-dev.app/api/v1` |
 | Production | `https://api.at-gaming.app/api/v1` |
 
-Source IPs must appear on the merchant whitelist or the response is `IP_NOT_ALLOWED`.
-
-The whitelist is an exact, per-address string match; CIDR ranges are not supported. Register
-every egress address individually, including every address in a NAT pool. An IPv6 entry must
-match the source address literally.
-
 ## Credentials
 
 | Field | Description |
@@ -36,11 +30,11 @@ match the source address literally.
 | `agent_acc` | Merchant agent account. Outer body, not encrypted |
 | ApiKey | 64 hex characters (32 bytes) for inner encrypt/decrypt |
 
-The ApiKey must remain server-side. Incident reports include environment, path, `agent_acc`, `trace_id`, and UTC time — never the ApiKey.
+Key handling and source IP whitelisting: see [G6](/en/protocol#g6).
 
 ## Accounts
 
-Inner `acc` is the player identifier without the agent prefix. Stored as `{agent_acc}_{acc}` (e.g. `kiwi01_jordan`).
+Inner `acc` is the player account without the agent prefix. Stored as `{agent_acc}_{acc}`, e.g. `kiwi01_jordan`.
 
 | Direction | Field | Example |
 |---|---|---|
@@ -49,7 +43,7 @@ Inner `acc` is the player identifier without the agent prefix. Stored as `{agent
 | Platform → merchant (balance callback) | `player_acc` | `jordan` |
 | Platform → merchant (bet / win / refund) | `acc` | `jordan` |
 
-A duplicated prefix yields `ACC_NOT_FOUND`.
+A duplicated prefix returns `ACC_NOT_FOUND`.
 
 ## Success
 

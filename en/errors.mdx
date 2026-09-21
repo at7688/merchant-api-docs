@@ -3,56 +3,42 @@ title: Error codes
 description: Success value is only OK.
 ---
 
-`code` `OK` denotes success. Any other value denotes failure. `data` is `null` on most errors.
+`code` equal to `OK` denotes success. Any other value denotes failure. `data` is `null` on most errors.
 
-<Warning>
-`ACC_NOT_ACTIVE` and `ACC_SUSPEND` appear in both tables; `data` distinguishes them —
-merchant level carries an `agent` object, player level is `null` (`/player/login` only).
-</Warning>
+`ACC_NOT_ACTIVE` and `ACC_SUSPEND` appear in both tables, distinguished by `data`: the merchant level carries an `agent` object, the player level is `null` (`/player/login` only).
 
 ## Transport and authentication
 
 | code | Definition | Handling |
 |---|---|---|
-| `AGENT_NOT_FOUND` | Outer `agent_acc` does not match an agent | Verify the account |
-| `IP_NOT_ALLOWED` | Source IP not whitelisted | Update the whitelist |
-| `API_KEY_INVALID` | ApiKey missing or not 32 bytes | Verify the key |
-| `DATA_FORMAT_INVALID` | `data` is not hex | Verify encoding |
-| `DECRYPT_FAILED` | Decrypt failed | Verify key, nonce layout, JSON |
-| `PARAM_INVALID` | Malformed request: outer or inner JSON unparseable, wrong field type, or failed validation | Check the outer `{agent_acc, data}` and the inner required fields, types, Unix seconds |
-| `IP_BLOCKED` | IP or country blocked | Change source or request unblock |
-| `ACC_NOT_ACTIVE` | **Merchant** inactive (`data` carries `{agent, status}`) | Stop |
-| `ACC_SUSPEND` | **Merchant** suspended (`data` carries `{agent, current_status}`) | Stop |
-| `TOO_MANY_REQUESTS` | Rate exceeded. Rate limiting applies to `/bet_rec/list`, `/jp_rec/list`, `/bet_report/list` and `/scratch_card_rec/list` only (10 / merchant / minute) | Reduce frequency |
-| `INTERNAL_SERVER_ERROR` | Fault (with HTTP 500). May occur mid-transaction | Outcome undetermined (see below); do not record it as a failure |
+| `AGENT_NOT_FOUND` | Outer `agent_acc` does not match an agent | |
+| `IP_NOT_ALLOWED` | Source IP not whitelisted, see [G6](/en/protocol#g6) | |
+| `API_KEY_INVALID` | ApiKey missing or not 32 bytes | |
+| `DATA_FORMAT_INVALID` | `data` is not valid hex | |
+| `DECRYPT_FAILED` | Decrypt failed | |
+| `PARAM_INVALID` | Malformed request: outer or inner JSON unparseable, wrong field type, or failed validation | |
+| `IP_BLOCKED` | Source IP or country blocked | |
+| `ACC_NOT_ACTIVE` | Merchant not active. `data` carries `{agent, status}` | Stop calling |
+| `ACC_SUSPEND` | Merchant suspended. `data` carries `{agent, current_status}` | Stop calling |
+| `TOO_MANY_REQUESTS` | Rate exceeded, limits in [G4](/en/protocol#g4) | |
+| `INTERNAL_SERVER_ERROR` | System fault, with HTTP 500. May occur during business logic | See [G3](/en/protocol#g3) |
 
-Except for `INTERNAL_SERVER_ERROR`, these errors occur before the request reaches business logic. Retry may reuse the original parameters. Transfer `sn` must not be replaced for these codes.
+Except for `INTERNAL_SERVER_ERROR`, these errors occur before the request reaches business logic, and retries may reuse the original parameters.
 
 ## Business
 
 | code | Definition | Handling |
 |---|---|---|
-| `ACC_EXIST` | Player already exists | Treat as created |
-| `ACC_NOT_FOUND` | Player does not exist | `/player/add`; no extra prefix |
-| `ACC_NOT_ACTIVE` | **Player** inactive (`data` is `null`) | Deny game entry |
-| `ACC_SUSPEND` | **Player** suspended (`data` is `null`) | Deny game entry |
-| `BALANCE_INSUFFICIENT` | Insufficient balance | Transfer: credit first. Seamless bet: return this code |
-| `TRANSFER_SN_EXIST` | `sn` already posted | `/transfer/check`. Not a failure |
-| `TRANSFER_NOT_FOUND` | No transfer | After HTTP 500, requery; then a new `sn` is allowed |
-| `GAME_NOT_FOUND` | Invalid game code | `/game/list` |
-| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet | Item `code`; found items use `OK`. Envelope remains `OK`. Do not auto-refund. An `sn` starting with `TOUR_` or `SC_` is not a bet (see [callbacks](/en/callback)) |
-| `GAME_MAINTAIN` | Maintenance | Defer entry |
-| `BET_AMOUNT_RANGE` | Stake outside min/max | Adjust amount |
-| `FREE_ROUND_CAP` | Monthly grant cap exceeded | Do not resubmit the batch |
-| `WRONG_OPERATION` | Grant parameters cannot be applied | Check `sn`, count, stake |
-
-## Undetermined outcome
-
-HTTP 500 or a dropped connection does not imply success or failure.
-
-| Context | Rule |
-|---|---|
-| `/transfer/add` | `/transfer/check` with the original `sn`. A row means posted; `TRANSFER_NOT_FOUND` allows a new `sn` |
-| Seamless | Merchant ledger for that `sn`. `/bet_rec/query` item `BET_NOT_FOUND` must not trigger an automatic refund |
-
-Seamless-wallet callback success: `code` is `OK`.
+| `ACC_EXIST` | Player account already exists. Treat as created | |
+| `ACC_NOT_FOUND` | Player does not exist | Call `/player/add` |
+| `ACC_NOT_ACTIVE` | Player not active. `data` is `null` | Deny game entry |
+| `ACC_SUSPEND` | Player suspended. `data` is `null` | Deny game entry |
+| `BALANCE_INSUFFICIENT` | Insufficient balance | Seamless `bet`: return this `code` to the platform |
+| `TRANSFER_SN_EXIST` | `sn` already posted. Not a failure | Call `/transfer/check` |
+| `TRANSFER_NOT_FOUND` | No such transfer | See [G3](/en/protocol#g3) |
+| `GAME_NOT_FOUND` | Invalid game code | Check against `/game/list` |
+| `BET_NOT_FOUND` | `/bet_rec/query`: no such bet for that item. The envelope `code` remains `OK`. An `sn` starting with `TOUR_` or `SC_` is not a bet, see [callbacks](/en/callback) | See [G3](/en/protocol#g3) |
+| `GAME_MAINTAIN` | Game or category under maintenance | |
+| `BET_AMOUNT_RANGE` | Stake outside the min/max for that player and that game | |
+| `FREE_ROUND_CAP` | Merchant nominal grant total for the month exceeded | Do not resubmit the same batch |
+| `WRONG_OPERATION` | Parameters cannot grant spins | |
