@@ -10,3 +10,15 @@ h3 {
 pre {
   border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
 }
+
+/*
+ * 暗色模式下表頭幾乎看不見。主題把 th 留在亮色的深灰（oklch(0.21 …)，約等於
+ * Tailwind gray-900），在深色底上量到的對比只有 2.39 —— 遠低於 AA 的 4.5，
+ * 而同一張表的內文是 7.52，等於表頭比內文還難讀。
+ *
+ * 2026-09-21 在 at-4aadd521.mintlify.app/records 實測：20 張表裡 19 張是 2.39，
+ * 只有第一張是白字（21）。套上這條之後全部落在 19.51–21，亮色模式不受影響（最低 8.16）。
+ */
+.dark table th {
+  color: var(--color-white);
+}
