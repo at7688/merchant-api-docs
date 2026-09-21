@@ -1,38 +1,25 @@
 ---
 title: 回調
-description: 平台對商戶之回調。Timeout 15 秒。
+description: 平台對商戶之回調。逾時 15 秒。
 ---
 
-適用於單錢包。平台對 `{MerchantApiUrl}{path}` 發出 `POST`，例如 `https://merchant.example/player/bet`。`MerchantApiUrl` 不得以 `/` 結尾。
+適用於單錢包。平台對 `{MerchantApiUrl}{path}` 發出 `POST`，例如 `https://merchant.example/player/bet`。
 
 ```json
 { "data": "<AES-GCM hex>" }
 ```
 
-無 `agent_acc`。解密金鑰與商戶 API 之 ApiKey 相同。排列見 [傳輸協議](/protocol)。`Content-Type: application/json`。逾時 15 秒。
-
-商戶回應須為 JSON，頂層必有 `code`。bet／win 之 `data.original_balance`、`data.balance` 為 number。其餘頂層欄位忽略。
-
-<Warning>
-成功時 `code` 為 `OK`。
-</Warning>
-
-逾時 **15 秒**。逾時當下不立即重送同一封包。之後仍可能對**同一 `sn`** 再發：
-
-| 情況 | 後續回調 |
+| 項目 | 規定 |
 |---|---|
-| `/player/bet` 結果未決 | `/player/refund`（自動或值班補送） |
-| `/player/win` 未成功（一般注單） | 稍後再發 `/player/win`（遊戲重送或值班補送） |
-| `/player/win` 未成功（錦標賽派彩） | 不自動重送，由值班補送（商戶以錯誤 `code` 拒絕者不補送） |
-| 注單卡住逾時後取消 | `/player/refund` |
+| `MerchantApiUrl` | 與路徑直接串接，不得以 `/` 結尾 |
+| 請求本文 | 僅 `data`，無 `agent_acc` |
+| 加解密 | 與商戶 API 同一 ApiKey、同一排列，見 [傳輸協議](/protocol) |
+| `Content-Type` | `application/json` |
+| 逾時 | 15 秒，含連線與讀取 |
+| 商戶回應 | JSON，頂層必有 `code`。成功為 `OK`。其餘頂層欄位忽略 |
+| 商戶 HTTP 狀態 | 須為 2xx，否則平台視為結果未決 |
 
-玩家離線後仍可能收到 `/player/win`。贈送旋轉消耗時**不發** `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。
-
-動錢請求以 `sn` 為唯一鍵：`bet`／`win` 未見則執行並持久化；已成功則回傳首次結果且餘額不變；已拒絕則回傳首次錯誤 `code`。`refund` 之規則見下方 `/player/refund`。`bet`／`win`／`refund` 之 `acc` 為**不含前綴**；僅 `balance` 回調同時給完整 `acc` 與 `player_acc`。
-
-<Warning>
-`sn` 去重紀錄至少保留 **90 天**。值班補送無時效上限。
-</Warning>
+冪等見 [G1](/protocol#g1)，重送見 [G2](/protocol#g2)，結果未決見 [G3](/protocol#g3)。
 
 ## POST `{base}/player/balance`
 
@@ -57,6 +44,8 @@ description: 平台對商戶之回調。Timeout 15 秒。
 
 ## POST `{base}/player/bet`
 
+扣款。
+
 <Card title="請求（解密後）" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
@@ -72,7 +61,7 @@ description: 平台對商戶之回調。Timeout 15 秒。
 <Card title="回應" icon="arrow-up-from-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `code` | string | 成功 `"OK"`；餘額不足例如 `BALANCE_INSUFFICIENT` |
+| `code` | string | 成功 `"OK"`；餘額不足 `BALANCE_INSUFFICIENT` |
 | `data.original_balance` | number | 扣款前餘額 |
 | `data.balance` | number | 扣款後餘額 |
 
@@ -82,23 +71,17 @@ description: 平台對商戶之回調。Timeout 15 秒。
   "data": { "original_balance": 1000, "balance": 900 }
 }
 ```
-
-餘額不足：`code` 為 `BALANCE_INSUFFICIENT`。
 </Card>
 
 ## POST `{base}/player/win`
 
 加款。`game_code` 有三種來源：
 
-| `game_code` | `sn` 形式 | 是否有前導 `/player/bet` | 對帳方式 |
+| `game_code` | `sn` 形式 | 前導 `/player/bet` | 對帳方式 |
 |---|---|---|---|
 | `/game/list` 之 `code` | 注單單號 | 有 | `/bet_rec/query` |
-| [`TOURNAMENT`](/enums#game-code) | `TOUR_{賽事id}_{名次}_{會員id}` | 無 | 目前無查詢接口，以商戶自身帳本為準 |
+| [`TOURNAMENT`](/enums#game-code) | `TOUR_{賽事id}_{名次}_{會員id}` | 無 | 無查詢接口，以商戶帳本為準 |
 | [`SCRATCH_CARD`](/enums#game-code) | `SC_{票券id}` | 無 | [`/scratch_card_rec/list`](/records) |
-
-<Warning>
-`TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 內，亦不在 `/bet_rec/query` 內；不得據此拒收。
-</Warning>
 
 <Card title="請求（解密後）" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
@@ -109,8 +92,8 @@ description: 平台對商戶之回調。Timeout 15 秒。
 | `acc` | string | 不含前綴 |
 | `name` | string | 顯示名稱 |
 | `amount` | number | 增加額，≥ 0（含未中獎） |
-| `beted_at` | integer | 下注時間 |
-| `settled_at` | integer | 結算時間 |
+| `beted_at` | integer | 下注時間，Unix 秒 |
+| `settled_at` | integer | 結算時間，Unix 秒 |
 </Card>
 
 <Card title="回應" icon="arrow-up-from-bracket">
@@ -119,9 +102,18 @@ description: 平台對商戶之回調。Timeout 15 秒。
 | `code` | string | `"OK"` |
 | `data.original_balance` | number | 加款前餘額 |
 | `data.balance` | number | 加款後餘額 |
+
+```json
+{
+  "code": "OK",
+  "data": { "original_balance": 900, "balance": 1400 }
+}
+```
 </Card>
 
 ## POST `{base}/player/refund`
+
+退回同一 `sn` 之 `/player/bet` 實際扣下的金額。
 
 <Card title="請求（解密後）" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
@@ -139,15 +131,14 @@ description: 平台對商戶之回調。Timeout 15 秒。
 |---|---|---|
 | `code` | string | `"OK"`。已退過仍回 `OK`，餘額不變 |
 | `data` | object \| omitted | 得省略 |
+
+```json
+{ "code": "OK" }
+```
 </Card>
 
-<Warning>
-`refund` 僅退回同一 `sn` 之 `/player/bet` 實際扣下的金額。商戶未曾收到該 `sn` 之 bet，或曾以錯誤 `code` 拒絕，須回 `OK` 且不得加款。平台於 bet 結果未決時即發 `refund`，該 bet 可能從未抵達商戶。
-</Warning>
+## 約束 {#constraints}
 
-### 重試與時限
-
-未收到 `OK` 時對**同一 `sn`** 自動重送：首次 60 秒，指數退避（60 × 2^n 秒），單次間隔上限
-1 小時，總時限 **24 小時**。
-
-逾 24 小時停止自動重送，轉為「逾時待處理」，改由值班重送或人工結案，時間不定。
+1. `TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 內，亦不在 `/bet_rec/query` 內。不得據此拒收。
+2. `/player/refund`：商戶未曾收到該 `sn` 之 bet，或曾以錯誤 `code` 拒絕者，回 `OK` 且不得加款。
+3. 贈送旋轉消耗時不發 `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。見 [贈送旋轉](/free-round)。

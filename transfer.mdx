@@ -3,9 +3,9 @@ title: 轉帳
 description: 轉帳錢包入金與出金。
 ---
 
-適用於轉帳錢包。`sn` 為冪等鍵。成功時外層信封見 [傳輸協議](/protocol)。`agent`／`member` 物件欄位見頁末。
+適用於轉帳錢包。成功時外層信封見 [傳輸協議](/protocol)。`agent`／`member` 物件欄位見頁末。冪等見 [G1](/protocol#g1)，結果未決見 [G3](/protocol#g3)。
 
-| 通則 | 約束 |
+| 項目 | 約束 |
 |---|---|
 | `sn` | 英數與 `_` `-`，6–120。同一商戶內唯一 |
 | `acc` | 玩家帳號，不含前綴 |
@@ -41,13 +41,11 @@ description: 轉帳錢包入金與出金。
 }
 ```
 
-| code | 說明 | 處理 |
+| code | 說明 | 後續 |
 |---|---|---|
-| `TRANSFER_SN_EXIST` | 該 `sn` 已成功入帳 | 呼叫 `/transfer/check`。非失敗 |
-| `BALANCE_INSUFFICIENT` | 出金餘額不足 | 未入帳 |
-| `ACC_NOT_FOUND` | 玩家不存在 | 未入帳 |
-
-HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn`。
+| `TRANSFER_SN_EXIST` | 該 `sn` 已成功入帳。非失敗 | 呼叫 `/transfer/check` |
+| `BALANCE_INSUFFICIENT` | 出金餘額不足，未入帳 | |
+| `ACC_NOT_FOUND` | 玩家不存在，未入帳 | |
 </Card>
 
 ## POST `/transfer/check`
@@ -87,12 +85,10 @@ HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀�
 }
 ```
 
-無紀錄：`TRANSFER_NOT_FOUND`。
-
-| code | 說明 | 處理 |
+| code | 說明 | 後續 |
 |---|---|---|
 | `TRANSFER_NOT_FOUND` | 無此轉帳 | 前次為 HTTP 500 時，間隔後再查；仍無則可使用新 `sn` |
-| `ACC_NOT_FOUND` | 查詢用的 `acc` 對不到玩家 | 查詢無效，不代表未入帳。須以原 `/transfer/add` 的 `acc` 重查。不得換新 `sn` |
+| `ACC_NOT_FOUND` | 查詢用的 `acc` 對不到玩家 | 以原 `/transfer/add` 的 `acc` 重查 |
 </Card>
 
 ## POST `/transfer/list`
@@ -102,7 +98,7 @@ HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀�
 |---|---|---|---|
 | `page` | 是 | integer | ≥ 1 |
 | `perpage` | 是 | integer | 1–100 |
-| `start_at` | 是 | integer | 起始 Unix 秒 |
+| `start_at` | 是 | integer | 起始 Unix 秒（`created_at`） |
 | `end_at` | 是 | integer | 結束 Unix 秒，須大於 `start_at` |
 | `acc` | 否 | string | 篩選玩家 |
 </Card>
@@ -137,3 +133,8 @@ HTTP 500：結果未決。以**原 `sn`** 呼叫 `/transfer/check`。查得紀�
 | `name` | string | 顯示名稱 |
 | `player_type` | string | [帳號類型](/enums#player-type) |
 | `currency` | string | [幣別](/enums#currency) |
+
+## 約束 {#constraints}
+
+1. `/transfer/check` 回 `ACC_NOT_FOUND` 表示該次查詢無效，不表示未入帳。
+2. `/transfer/add` 回 HTTP 500 後，須以原 `sn` 查證，見 [G3](/protocol#g3)。

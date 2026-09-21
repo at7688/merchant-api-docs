@@ -1,6 +1,6 @@
 ---
 title: 傳輸協議
-description: 封套、AES-256-GCM、HTTP 與 code。
+description: 封套、AES-256-GCM、HTTP、code 與通則。
 ---
 
 ## 請求
@@ -12,7 +12,7 @@ description: 封套、AES-256-GCM、HTTP 與 code。
 | 編碼 | UTF-8 |
 | URL | `{base}{path}`，例如 `https://api.at-dev.app/api/v1/player/add` |
 | 路徑前綴 | `/api/v1` |
-| 額外標頭 | 不需要。來源 IP 取 `CF-Connecting-IP`，否則 `X-Forwarded-For`／連線位址，須在白名單 |
+| 額外標頭 | 不需要。來源 IP 取 `CF-Connecting-IP`，否則 `X-Forwarded-For`／連線位址，須符合 [G6](#g6) |
 
 ## 慣例
 
@@ -21,12 +21,10 @@ description: 封套、AES-256-GCM、HTTP 與 code。
 | `agent_acc` | 比對前轉小寫、去首尾空白 |
 | `acc` | 去首尾空白後轉小寫，再與代理帳號組成 `{agent_acc}_{acc}` |
 | `game_code` | 去空白後轉大寫。登入、贈送旋轉皆然 |
-| 時間 | Unix **秒**（10 位）。帳務日界為 **UTC+8**（`Asia/Shanghai`）當日 00:00 |
+| 時間 | Unix 秒（10 位）。帳務日界為 UTC+8（`Asia/Shanghai`）當日 00:00 |
 | 金額 | JSON number。小數最多兩位（資料庫 `DECIMAL`） |
 | 選填篩選 | 空字串或 0 表示不套該條件 |
 | 請求不合格 | 外層或內層 JSON 無法解析、欄位型別不對、或欄位驗證未通過，一律 `PARAM_INVALID` |
-
-回調 base URL 與路徑直接串接：`{MerchantApiUrl}/player/bet`。base **不得**以 `/` 結尾，否則會出現 `//player/bet`。
 
 ### 外層
 
@@ -60,11 +58,11 @@ UTF-8 JSON 物件，欄位為 snake_case。該位元組序列為 GCM 明文。�
 | tag | 16 bytes |
 | 密文排列 | `nonce ‖ ciphertext ‖ tag`，再編碼為 hex |
 
-單錢包回調使用同一金鑰與同一排列。平台請求本文僅 `{ "data": "<hex>" }`，**不含** `agent_acc`。逾時 15 秒（含連線與讀取）。商戶回應須為 JSON，頂層含 `code`；`data` 欄位見 [回調](/callback)。HTTP 狀態須為 2xx，否則平台視為結果未決。
+單錢包回調使用同一金鑰與同一排列，封套見 [回調](/callback)。
 
-### 參考向量
+### 參考向量 {#vectors}
 
-僅供實作核對，不得作為正式金鑰。明文為 `{"acc":"jordan","name":"Amy"}`（無空白、無換行）。
+明文為 `{"acc":"jordan","name":"Amy"}`（無空白、無換行）。
 
 | | hex |
 |---|---|
@@ -116,10 +114,10 @@ def encrypt(plain: str, key_hex: str) -> str:
 | `api_version` | string | API 版本，目前為 `v1` |
 | `message` | string | 附加說明，多數為空字串 |
 | `code` | string | 業務結果。成功僅為 `OK` |
-| `data` | object \| array \| null | 成功時之資料本體。錯誤時多為 `null`，少數錯誤會帶診斷物件（見 [錯誤碼](/errors)） |
+| `data` | object \| array \| null | 成功時之資料本體。錯誤時多為 `null`，少數錯誤帶診斷物件（見 [錯誤碼](/errors)） |
 | `trace_id` | string | 本次請求識別，對帳與缺陷報告使用 |
 
-成功與否以 `code` 為準。
+成功與否以 `code` 為準。所有 `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`）皆以 HTTP 200 回傳。
 
 ### HTTP 狀態
 
@@ -127,10 +125,81 @@ def encrypt(plain: str, key_hex: str) -> str:
 |---|---|
 | `200` | 請求已被處理。成功與否讀 `code` |
 | `404` | 路徑不存在 |
-| `500` | 結果未決，body 未必為 JSON |
+| `500` | 結果未決，body 未必為 JSON。處置見 [G3](#g3) |
 
-<Warning>
-本文件所有 `code`（含 `PARAM_INVALID`、`TOO_MANY_REQUESTS`）皆以 **HTTP 200** 回傳。
-</Warning>
+## 通則
 
-HTTP 500 表示結果未決：轉帳須以同一 `sn` 呼叫 `/transfer/check`；單錢包須以商戶帳本及 `/bet_rec/query` 核對，不得逕行沖正。
+以下六條跨多個接口。各接口頁以編號引用。
+
+### G1 冪等鍵 {#g1}
+
+| 項目 | 規定 |
+|---|---|
+| 鍵 | `sn`。`/transfer/add`、`/free_round/add` 與單錢包 `bet`／`win`／`refund` 皆以 `sn` 判定重複 |
+| 首次收到 | 執行並持久化結果 |
+| 重複且首次成功 | 回傳首次結果，餘額不變 |
+| 重複且首次拒絕 | 回傳首次錯誤 `code` |
+| 商戶端去重紀錄 | 至少保留 90 天 |
+
+### G2 回調重送 {#g2}
+
+逾時當下不重送同一封包。之後對同一 `sn` 可能再發：
+
+| 情況 | 後續回調 |
+|---|---|
+| `/player/bet` 結果未決 | `/player/refund`（自動或值班補送） |
+| `/player/win` 未成功（一般注單） | 再發 `/player/win`（遊戲重送或值班補送） |
+| `/player/win` 未成功（錦標賽派彩） | 不自動重送，由值班補送。商戶以錯誤 `code` 拒絕者不補送 |
+| 注單卡住逾時後取消 | `/player/refund` |
+
+`/player/refund` 之自動重送：
+
+| 項目 | 規定 |
+|---|---|
+| 首次間隔 | 60 秒 |
+| 退避 | 60 × 2^n 秒，單次間隔上限 1 小時 |
+| 總時限 | 24 小時 |
+| 逾 24 小時 | 停止自動重送，轉「逾時待處理」，改由值班重送或人工結案，無時效上限 |
+
+玩家離線後仍可能收到 `/player/win`。
+
+### G3 結果未決 {#g3}
+
+HTTP 500、連線中斷或逾時：不得假設成功或失敗，不得逕行沖正。
+
+| 場景 | 規定 |
+|---|---|
+| `/transfer/add` | 以原 `sn` 呼叫 `/transfer/check`。查得紀錄即已入帳；回 `TRANSFER_NOT_FOUND` 後方可使用新 `sn` |
+| 單錢包 | 以商戶帳本該 `sn` 為準，並以 `/bet_rec/query` 核對 |
+| 其餘接口 | 重試得使用原參數 |
+
+`/bet_rec/query` 列上 `BET_NOT_FOUND` 不得據以自動退款。轉帳不得更換 `sn`。
+
+### G4 速率限制 {#g4}
+
+| 接口 | 上限 |
+|---|---|
+| `/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list` | 每商戶每分鐘 10 次 |
+| 其餘接口 | 不限流 |
+
+超出為 `TOO_MANY_REQUESTS`。
+
+### G5 資料保留期限 {#g5}
+
+| 對象 | 期限 |
+|---|---|
+| 彙總資料（`/bet_report/list`） | 60 天。更早的區間回空清單（`code` 為 `OK`、`row_count` 為 0） |
+| 注單（`/bet_rec/list`、`/bet_rec/query`） | 不受 60 天限制 |
+| 商戶端 `sn` 去重紀錄 | 至少 90 天 |
+| 贈送旋轉未指定 `expire_at` | 自發放起 30 日 |
+
+### G6 金鑰與來源位址 {#g6}
+
+| 項目 | 規定 |
+|---|---|
+| ApiKey | 僅能置於伺服器端 |
+| 參考向量之金鑰 | 不得作為正式金鑰 |
+| 來源 IP | 須列入該商戶白名單，否則回應 `IP_NOT_ALLOWED` |
+| 白名單比對 | 逐筆 IP 位址完全比對，不支援網段／CIDR。每個出口位址個別登記，含 NAT 位址池全部位址 |
+| IPv6 | 須與來源位址字面完全相同 |
+| 缺陷報告 | 提供環境、路徑、`agent_acc`、`trace_id` 與 UTC 時間，不含 ApiKey |

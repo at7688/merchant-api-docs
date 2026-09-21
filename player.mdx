@@ -7,7 +7,7 @@ description: 建立、餘額、登入、登出。
 
 ## POST `/player/add`
 
-建立會員。幣別、JP 開關與單注上下限自該商戶代理複製。`ACC_EXIST` 表示帳號已存在。
+建立會員。幣別、JP 開關與單注上下限自該商戶代理複製。
 
 <Card title="請求" icon="arrow-up-from-bracket">
 | 欄位 | 必填 | 型別 | 說明 |
@@ -24,7 +24,7 @@ description: 建立、餘額、登入、登出。
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `acc` | string | 平台完整帳號，`{agent_acc}_{acc}` |
-| `player_acc` | string | 不含前綴之玩家帳號 |
+| `player_acc` | string | 不含前綴之玩家帳號。後續請求傳送此值 |
 | `player_id` | integer | 平台內部識別 |
 
 ```json
@@ -41,7 +41,9 @@ description: 建立、餘額、登入、登出。
 }
 ```
 
-後續請求仍傳送 `jordan`。
+| code | 說明 |
+|---|---|
+| `ACC_EXIST` | 帳號已存在 |
 </Card>
 
 ## POST `/player/balance`
@@ -84,7 +86,7 @@ description: 建立、餘額、登入、登出。
 | `ip` | 是 | string | 玩家 IPv4 或 IPv6 |
 | `device` | 是 | string | [裝置](/enums#device) |
 | `game_code` | 否 | string | 遊戲代碼，大小寫不拘（內部轉大寫）。省略或空字串進入大廳 |
-| `return_url` | 否 | string | 離開遊戲後之返回 URL |
+| `return_url` | 否 | string | 離開遊戲後之返回 URL，經 query escape 後放入 |
 
 ```json
 {
@@ -100,16 +102,14 @@ description: 建立、餘額、登入、登出。
 <Card title="回應" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `url` | string | 大廳或遊戲完整 URL。用戶端直接開啟，不得修改 `token` |
+| `url` | string | 大廳或遊戲完整 URL |
 
-查庫時 `game_code` 轉大寫。回傳路徑為**小寫**：
+查庫時 `game_code` 轉大寫，回傳路徑為小寫：
 
 | `game_code` | `url` 形狀 |
 |---|---|
 | 有值 | `{GameURL}/{game_code}?token=…&lang=…&return_url=…` |
 | 省略或空 | `{LobbyURL}?token=…&lang=…&return_url=…` |
-
-`return_url` 經 query escape 後放入。`game_code` 無效為 `GAME_NOT_FOUND`；遊戲或類別維護中為 `GAME_MAINTAIN`（清單仍可能列出維護中遊戲）。
 
 ```json
 {
@@ -126,7 +126,7 @@ description: 建立、餘額、登入、登出。
 | `ACC_NOT_ACTIVE` | 玩家未啟用 |
 | `ACC_SUSPEND` | 玩家已暫停 |
 | `GAME_NOT_FOUND` | 遊戲代碼無效 |
-| `GAME_MAINTAIN` | 維護中 |
+| `GAME_MAINTAIN` | 遊戲或類別維護中 |
 </Card>
 
 ## POST `/player/logout`
@@ -150,3 +150,8 @@ description: 建立、餘額、登入、登出。
 { "code": "OK", "data": { "count": 1 } }
 ```
 </Card>
+
+## 約束 {#constraints}
+
+1. `/player/login` 之 `url` 由用戶端直接開啟，不得修改 `token`。
+2. 維護中遊戲仍出現於 `/game/list`，見 [遊戲紀錄約束](/records#constraints)。

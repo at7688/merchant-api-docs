@@ -3,17 +3,17 @@ title: 流程
 description: 單錢包對接順序。
 ---
 
-單錢包：玩家餘額位於商戶。商戶仍呼叫平台之建立玩家與登入接口。下注扣款與派彩由平台對商戶 **回調**。
+單錢包：玩家餘額位於商戶。商戶仍呼叫平台之建立玩家與登入接口。下注扣款與派彩由平台對商戶回調。
 
 共用規格：[傳輸協議](/protocol)、[錯誤碼](/errors)。回調規格：[回調](/callback)。
 
 ## 對接順序
 
-1. 取得 `agent_acc`、ApiKey；將呼叫來源 IP 列入白名單。於後台填入商戶回調 base URL。
+1. 取得 `agent_acc`、ApiKey；將呼叫來源 IP 列入白名單（[G6](/protocol#g6)）。於後台填入商戶回調 base URL。
 2. 實作商戶 → 平台之加密，以及平台 → 商戶回調之解密。金鑰相同。
 3. `POST /player/add`、`POST /player/login`。`acc` 不含代理前綴。
-4. 實作回調：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。成功時 `code` 為 `OK`。逾時 15 秒。
-5. 以 `sn` 為唯一鍵保證冪等，去重紀錄至少保留 **90 天**。同一 `sn` 的 win／refund **稍後可能再送**（結算重試、值班補送、卡住注退款）。已成功則回首次結果。玩家離線後仍須接受 `/player/win`。贈送旋轉不發 bet、仍可能 win。
-6. 對帳：`/bet_rec/query`，只涵蓋注單。`SC_` 開頭（刮刮卡派彩）用 `/scratch_card_rec/list`；`TOUR_` 開頭（錦標賽派彩）無查詢接口，以商戶帳本為準。列上 `code` 為 `BET_NOT_FOUND` 時不得自動退款。
+4. 實作回調：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。
+5. 依 [G1](/protocol#g1) 實作冪等去重，依 [G2](/protocol#g2) 接受同一 `sn` 的後續重送。
+6. 對帳：`/bet_rec/query` 只涵蓋注單。`SC_` 開頭（刮刮卡派彩）用 `/scratch_card_rec/list`；`TOUR_` 開頭（錦標賽派彩）無查詢接口，以商戶帳本為準。
 
 後續接口：[玩家](/player)、[回調](/callback)、[紀錄](/records)、[贈送旋轉](/free-round)。

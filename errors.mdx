@@ -3,56 +3,42 @@ title: 錯誤碼表
 description: 成功值僅為 OK。
 ---
 
-`code` 等於 `OK` 表示成功。其餘值表示失敗。`data` 於多數錯誤為 `null`。
+`code` 等於 `OK` 表示成功，其餘值表示失敗。`data` 於多數錯誤為 `null`。
 
-<Warning>
-`ACC_NOT_ACTIVE`、`ACC_SUSPEND` 兩張表皆有，以 `data` 區分：商戶層帶 `agent` 物件，
-玩家層為 `null`（僅 `/player/login`）。
-</Warning>
+`ACC_NOT_ACTIVE`、`ACC_SUSPEND` 兩張表皆有，以 `data` 區分：商戶層帶 `agent` 物件，玩家層為 `null`（僅 `/player/login`）。
 
 ## 傳輸與鑑權
 
-| code | 定義 | 處理 |
+| code | 定義 | 後續 |
 |---|---|---|
-| `AGENT_NOT_FOUND` | 外層 `agent_acc` 無法對應代理 | 核對帳號 |
-| `IP_NOT_ALLOWED` | 來源 IP 不在白名單 | 更新白名單 |
-| `API_KEY_INVALID` | ApiKey 未設定或長度非 32 位元組 | 核對金鑰 |
-| `DATA_FORMAT_INVALID` | `data` 非合法 hex | 核對編碼 |
-| `DECRYPT_FAILED` | 解密失敗 | 核對金鑰、nonce 排列與明文 JSON |
-| `PARAM_INVALID` | 請求不合格：外層或內層 JSON 無法解析、欄位型別不對、或欄位驗證未通過 | 核對外層 `{agent_acc, data}` 與內層必填、型別、長度；時間為 Unix 秒 |
-| `IP_BLOCKED` | 來源 IP 或國家被封鎖 | 變更來源或申請解除 |
-| `ACC_NOT_ACTIVE` | **商戶**未啟用（`data` 帶 `{agent, status}`） | 終止呼叫 |
-| `ACC_SUSPEND` | **商戶**已暫停（`data` 帶 `{agent, current_status}`） | 終止呼叫 |
-| `TOO_MANY_REQUESTS` | 超過速率。限流僅套用於 `/bet_rec/list`、`/jp_rec/list`、`/bet_report/list`、`/scratch_card_rec/list`（每商戶每分鐘 10 次） | 降低頻率 |
-| `INTERNAL_SERVER_ERROR` | 系統錯誤（伴隨 HTTP 500）。可能發生在業務邏輯執行中 | 結果未決，見下節。不得逕行判定失敗 |
+| `AGENT_NOT_FOUND` | 外層 `agent_acc` 無法對應代理 | |
+| `IP_NOT_ALLOWED` | 來源 IP 不在白名單，見 [G6](/protocol#g6) | |
+| `API_KEY_INVALID` | ApiKey 未設定或長度非 32 位元組 | |
+| `DATA_FORMAT_INVALID` | `data` 非合法 hex | |
+| `DECRYPT_FAILED` | 解密失敗 | |
+| `PARAM_INVALID` | 請求不合格：外層或內層 JSON 無法解析、欄位型別不對、或欄位驗證未通過 | |
+| `IP_BLOCKED` | 來源 IP 或國家被封鎖 | |
+| `ACC_NOT_ACTIVE` | 商戶未啟用。`data` 帶 `{agent, status}` | 終止呼叫 |
+| `ACC_SUSPEND` | 商戶已暫停。`data` 帶 `{agent, current_status}` | 終止呼叫 |
+| `TOO_MANY_REQUESTS` | 超過速率，上限見 [G4](/protocol#g4) | |
+| `INTERNAL_SERVER_ERROR` | 系統錯誤，伴隨 HTTP 500。可能發生在業務邏輯執行中 | 見 [G3](/protocol#g3) |
 
-除 `INTERNAL_SERVER_ERROR` 外，上述錯誤在請求進入業務邏輯前發生，重試得使用原參數；轉帳不得因此更換 `sn`。
+除 `INTERNAL_SERVER_ERROR` 外，上述錯誤在請求進入業務邏輯前發生，重試得使用原參數。
 
 ## 業務
 
-| code | 定義 | 處理 |
+| code | 定義 | 後續 |
 |---|---|---|
-| `ACC_EXIST` | 玩家帳號已存在 | 視為已建立 |
-| `ACC_NOT_FOUND` | 玩家不存在 | 先呼叫 `/player/add`；確認未附加前綴 |
-| `ACC_NOT_ACTIVE` | **玩家**未啟用（`data` 為 `null`） | 拒絕進入遊戲 |
-| `ACC_SUSPEND` | **玩家**已暫停（`data` 為 `null`） | 拒絕進入遊戲 |
-| `BALANCE_INSUFFICIENT` | 餘額不足 | 轉帳：入金後再出金。單錢包 bet：以此 code 回應平台 |
-| `TRANSFER_SN_EXIST` | `sn` 已成功入帳 | 呼叫 `/transfer/check`。非失敗 |
-| `TRANSFER_NOT_FOUND` | 無此轉帳 | 若前次為 HTTP 500，間隔後再查詢；仍無則可使用新 `sn` |
+| `ACC_EXIST` | 玩家帳號已存在。視為已建立 | |
+| `ACC_NOT_FOUND` | 玩家不存在 | 呼叫 `/player/add` |
+| `ACC_NOT_ACTIVE` | 玩家未啟用。`data` 為 `null` | 拒絕進入遊戲 |
+| `ACC_SUSPEND` | 玩家已暫停。`data` 為 `null` | 拒絕進入遊戲 |
+| `BALANCE_INSUFFICIENT` | 餘額不足 | 單錢包 `bet`：以此 `code` 回應平台 |
+| `TRANSFER_SN_EXIST` | `sn` 已成功入帳。非失敗 | 呼叫 `/transfer/check` |
+| `TRANSFER_NOT_FOUND` | 無此轉帳 | 見 [G3](/protocol#g3) |
 | `GAME_NOT_FOUND` | 遊戲代碼無效 | 以 `/game/list` 核對 |
-| `BET_NOT_FOUND` | `/bet_rec/query` 查無此單 | 該列 `code`；有單之列 `code` 為 `OK`。外層仍 `OK`。不得自動退款。`TOUR_`／`SC_` 開頭者不在注單內，屬正常（見 [回調](/callback)） |
-| `GAME_MAINTAIN` | 遊戲或類別維護中 | 延後進入 |
-| `BET_AMOUNT_RANGE` | 注額超出該玩家該遊戲上下限 | 調整金額 |
+| `BET_NOT_FOUND` | `/bet_rec/query` 該列查無此單。外層 `code` 仍為 `OK`。`TOUR_`／`SC_` 開頭者不在注單內，見 [回調](/callback) | 見 [G3](/protocol#g3) |
+| `GAME_MAINTAIN` | 遊戲或類別維護中 | |
+| `BET_AMOUNT_RANGE` | 注額超出該玩家該遊戲上下限 | |
 | `FREE_ROUND_CAP` | 超過商戶當月贈送名目總額 | 不得重送同一批 |
-| `WRONG_OPERATION` | 參數無法發放贈送旋轉 | 核對 `sn`、次數、注額 |
-
-## 結果未決
-
-HTTP 500 或連線中斷時，不得假設成功或失敗。
-
-| 場景 | 規定 |
-|---|---|
-| `/transfer/add` | 以原 `sn` 呼叫 `/transfer/check`。查得紀錄即已入帳；`TRANSFER_NOT_FOUND` 後方可使用新 `sn` |
-| 單錢包 | 以商戶帳本中該 `sn` 為準。`/bet_rec/query` 列上 `BET_NOT_FOUND` 時不得自動退款 |
-
-單錢包回調成功時 `code` 為 `OK`。
+| `WRONG_OPERATION` | 參數無法發放贈送旋轉 | |

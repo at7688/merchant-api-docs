@@ -23,11 +23,6 @@ AT Gaming 商戶 API 提供玩家帳戶、資金、遊戲進入與帳務查詢�
 | 測試 | `https://api.at-dev.app/api/v1` |
 | 正式 | `https://api.at-gaming.app/api/v1` |
 
-來源 IP 須列入該商戶白名單，否則回應 `IP_NOT_ALLOWED`。
-
-白名單為逐筆 IP 位址完全比對，不支援網段／CIDR。每個出口位址須個別登記（含 NAT 位址池全部位址）。
-IPv6 須與來源位址字面完全相同。
-
 ## 憑證
 
 | 欄位 | 說明 |
@@ -35,7 +30,7 @@ IPv6 須與來源位址字面完全相同。
 | `agent_acc` | 商戶代理帳號。置於請求外層，不加密 |
 | ApiKey | 64 位十六進位字元（32 位元組），用於內層加解密 |
 
-ApiKey 僅能置於伺服器端。缺陷報告須提供環境、路徑、`agent_acc`、`trace_id` 與 UTC 時間，不得包含 ApiKey。
+金鑰保管與來源位址白名單見 [G6](/protocol#g6)。
 
 ## 帳號
 
@@ -48,7 +43,7 @@ ApiKey 僅能置於伺服器端。缺陷報告須提供環境、路徑、`agent_
 | 平台 → 商戶（回調 balance） | `player_acc` | `jordan` |
 | 平台 → 商戶（bet / win / refund） | `acc` | `jordan` |
 
-重複附加前綴將導致 `ACC_NOT_FOUND`。
+重複附加前綴回 `ACC_NOT_FOUND`。
 
 ## 成功條件
 
