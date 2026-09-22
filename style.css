@@ -22,3 +22,45 @@ pre {
 .dark table th {
   color: var(--color-white);
 }
+
+/*
+ * Logo 與站名。
+ *
+ * 兩個 logo 檔是同一張純白單色圖（logo/light.png 與 logo/dark.png 內容相同）。
+ * 深色模式直接用白色；亮色模式靠 invert 翻成深色，所以兩邊都是單色，
+ * 不會像原本那張金色漸層一樣在不同底色上顯得髒。
+ * 選擇器用 Mintlify 自己產的 alt 值（"light logo" / "dark logo"），
+ * 它比 Tailwind 的 dark:hidden 那串 class 穩定。
+ */
+img.nav-logo[alt="light logo"] {
+  filter: invert(1);
+}
+
+/*
+ * 設了 logo 之後 Mintlify 就不再顯示 docs.json 的 name，左上角只剩圖。
+ * 這裡把站名補回圖的右邊。<a> 裡原本那句 "AT Gaming home page" 是給螢幕閱讀器的
+ * sr-only 文字，不會顯示，所以不會重複。
+ */
+a:has(> img.nav-logo)::after {
+  content: "AT Gaming";
+  margin-left: 0.5rem;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  /* ★ 這個主題的 --gray-* 存的是「28 24 23」這種空格分隔的 RGB 分量（Tailwind 4 格式），
+     不是可以直接當顏色用的字串。寫 var(--gray-900) 會是無效值、靜默落回繼承色
+     （量到 rgb(117,113,112)，比周圍文字還淡）。要包一層 rgb()。
+     --color-white 則是 #fff，可以直接用。 */
+  color: rgb(var(--gray-900));
+  white-space: nowrap;
+}
+
+.dark a:has(> img.nav-logo)::after {
+  color: var(--color-white);
+}
+
+/* logo 與站名並排 */
+a:has(> img.nav-logo) {
+  display: inline-flex;
+  align-items: center;
+}
