@@ -27,7 +27,8 @@
                 "group": "總則",
                 "pages": [
                   "index",
-                  "protocol"
+                  "protocol",
+                  "demo"
                 ],
                 "expanded": false
               },
@@ -75,7 +76,8 @@
                 "group": "通则",
                 "pages": [
                   "zh-CN/index",
-                  "zh-CN/protocol"
+                  "zh-CN/protocol",
+                  "zh-CN/demo"
                 ],
                 "expanded": false
               },
@@ -123,7 +125,8 @@
                 "group": "General",
                 "pages": [
                   "en/index",
-                  "en/protocol"
+                  "en/protocol",
+                  "en/demo"
                 ],
                 "expanded": false
               },
