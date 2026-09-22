@@ -16,32 +16,47 @@
         "default": true,
         "groups": [
           {
-            "group": "總則",
-            "pages": ["index", "protocol"]
-          },
-          {
-            "group": "轉帳錢包",
+            "group": "商戶 API",
             "pages": [
-              "transfer-guide",
-              "player",
-              "transfer",
-              "records",
-              "free-round"
+              {
+                "group": "總則",
+                "pages": [
+                  "index",
+                  "protocol"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "轉帳錢包",
+                "pages": [
+                  "transfer-guide",
+                  "player",
+                  "transfer",
+                  "records",
+                  "free-round"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "單錢包",
+                "pages": [
+                  "seamless-guide",
+                  "player",
+                  "callback",
+                  "records",
+                  "free-round"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "附錄",
+                "pages": [
+                  "enums",
+                  "errors"
+                ],
+                "expanded": false
+              }
             ]
-          },
-          {
-            "group": "單錢包",
-            "pages": [
-              "seamless-guide",
-              "player",
-              "callback",
-              "records",
-              "free-round"
-            ]
-          },
-          {
-            "group": "附錄",
-            "pages": ["enums", "errors"]
           }
         ]
       },
@@ -49,32 +64,47 @@
         "language": "zh-CN",
         "groups": [
           {
-            "group": "通则",
-            "pages": ["zh-CN/index", "zh-CN/protocol"]
-          },
-          {
-            "group": "转账钱包",
+            "group": "商户 API",
             "pages": [
-              "zh-CN/transfer-guide",
-              "zh-CN/player",
-              "zh-CN/transfer",
-              "zh-CN/records",
-              "zh-CN/free-round"
+              {
+                "group": "通则",
+                "pages": [
+                  "zh-CN/index",
+                  "zh-CN/protocol"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "转账钱包",
+                "pages": [
+                  "zh-CN/transfer-guide",
+                  "zh-CN/player",
+                  "zh-CN/transfer",
+                  "zh-CN/records",
+                  "zh-CN/free-round"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "单一钱包",
+                "pages": [
+                  "zh-CN/seamless-guide",
+                  "zh-CN/player",
+                  "zh-CN/callback",
+                  "zh-CN/records",
+                  "zh-CN/free-round"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "附录",
+                "pages": [
+                  "zh-CN/enums",
+                  "zh-CN/errors"
+                ],
+                "expanded": false
+              }
             ]
-          },
-          {
-            "group": "单一钱包",
-            "pages": [
-              "zh-CN/seamless-guide",
-              "zh-CN/player",
-              "zh-CN/callback",
-              "zh-CN/records",
-              "zh-CN/free-round"
-            ]
-          },
-          {
-            "group": "附录",
-            "pages": ["zh-CN/enums", "zh-CN/errors"]
           }
         ]
       },
@@ -82,32 +112,47 @@
         "language": "en",
         "groups": [
           {
-            "group": "General",
-            "pages": ["en/index", "en/protocol"]
-          },
-          {
-            "group": "Transfer wallet",
+            "group": "Merchant API",
             "pages": [
-              "en/transfer-guide",
-              "en/player",
-              "en/transfer",
-              "en/records",
-              "en/free-round"
+              {
+                "group": "General",
+                "pages": [
+                  "en/index",
+                  "en/protocol"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Transfer wallet",
+                "pages": [
+                  "en/transfer-guide",
+                  "en/player",
+                  "en/transfer",
+                  "en/records",
+                  "en/free-round"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Seamless wallet",
+                "pages": [
+                  "en/seamless-guide",
+                  "en/player",
+                  "en/callback",
+                  "en/records",
+                  "en/free-round"
+                ],
+                "expanded": false
+              },
+              {
+                "group": "Appendix",
+                "pages": [
+                  "en/enums",
+                  "en/errors"
+                ],
+                "expanded": false
+              }
             ]
-          },
-          {
-            "group": "Seamless wallet",
-            "pages": [
-              "en/seamless-guide",
-              "en/player",
-              "en/callback",
-              "en/records",
-              "en/free-round"
-            ]
-          },
-          {
-            "group": "Appendix",
-            "pages": ["en/enums", "en/errors"]
           }
         ]
       }
