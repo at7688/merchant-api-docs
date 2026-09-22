@@ -16,10 +16,10 @@ Demo play does not go through the merchant API. Open the link and you are in —
 
 | Parameter | Rule |
 |---|---|
-| `currency` | Demo currency. Unset = `TWD`. Only a currency already used by an agent on the platform is accepted; anything else falls back to an existing platform currency |
 | `game` | Game code, case-insensitive. When set, the lobby is skipped and that game opens directly. Take it from `code` in `/game/list` |
+| `lang` | Interface language. `zh-TW`, `zh-CN`, `en`, `vi-VN`, `ja`, `th`, `ko-KR`, `hi-IN`, `es-ES`, `ms-MY`, `ne-NP`. Unset or unrecognised = `en` |
 
-`https://game-lobby.at-gaming.app/demo?currency=TWD&game=HSZN`
+`https://game-lobby.at-gaming.app/demo?game=HSZN&lang=vi-VN`
 
 ## Accounts
 
