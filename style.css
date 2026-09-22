@@ -26,20 +26,10 @@ pre {
 /*
  * Logo 與站名。
  *
- * 兩個 logo 檔是同一張純白單色圖（logo/light.png 與 logo/dark.png 內容相同）。
- * 深色模式直接用白色；亮色模式靠 invert 翻成深色，所以兩邊都是單色，
- * 不會像原本那張金色漸層一樣在不同底色上顯得髒。
- * 選擇器用 Mintlify 自己產的 alt 值（"light logo" / "dark logo"），
- * 它比 Tailwind 的 dark:hidden 那串 class 穩定。
- */
-img.nav-logo[alt="light logo"] {
-  filter: invert(1);
-}
-
-/*
- * 設了 logo 之後 Mintlify 就不再顯示 docs.json 的 name，左上角只剩圖。
- * 這裡把站名補回圖的右邊。<a> 裡原本那句 "AT Gaming home page" 是給螢幕閱讀器的
- * sr-only 文字，不會顯示，所以不會重複。
+ * 兩個 logo 檔都是平塗的單色金（light.png #B8860B 給亮底、dark.png #FCCA1E 給深底），
+ * 由白色原圖重新上色而來，所以這裡不需要任何 filter。
+ * 先前做成黑白並用 invert 翻色，在白底上變成「黑圖 + 暗金字」，
+ * 作者回饋那個組合在華人語境像喪事的配色，已改掉。
  */
 a:has(> img.nav-logo)::after {
   content: "AT Gaming";

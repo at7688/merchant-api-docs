@@ -8,9 +8,9 @@
     "href": "https://at-gaming.app"
   },
   "colors": {
-    "primary": "#976D00",
-    "light": "#FCCA1E",
-    "dark": "#7A5500"
+    "primary": "#1263B3",
+    "light": "#4DB5FF",
+    "dark": "#0A478C"
   },
   "css": "/style.css",
   "favicon": "/favicon.svg",
