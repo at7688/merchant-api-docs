@@ -83,6 +83,13 @@ description: 注单、JP、报表、刮刮卡。
 | `agent` | object | 商户摘要 |
 | `member` | object | 玩家摘要 |
 | `slot_bet_detail` | object | 游戏端明细，结构随游戏而异 |
+
+`slot_bet_detail` 结构随游戏而异，但下列字段在有提供的游戏含义一致，可辨识购买与特色玩法（均选填，省略即代表无）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `buy_option` | integer | 玩家此轮购买的玩法代码（例如买免费游戏、全盘奖励）。省略或 `0`＝普通轮或未指定购买玩法。代码定义随游戏而异 |
+| `feature_code` | string | 此轮触发的特色玩法代码。省略或空字符串＝未触发特色。代码定义随游戏而异 |
 </Card>
 
 ## POST `/bet_rec/detail`

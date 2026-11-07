@@ -83,6 +83,13 @@ The inner body may be `{}`.
 | `agent` | object | Merchant profile |
 | `member` | object | Player profile |
 | `slot_bet_detail` | object | Game-side detail, structure varies by game |
+
+`slot_bet_detail` varies by game, but the following keys carry the same meaning across the games that provide them, and let you tell purchase and feature play apart (both optional; absent means none):
+
+| Field | Type | Description |
+|---|---|---|
+| `buy_option` | integer | Code of the play mode the player bought this spin (e.g. buy free game, full-board bonus). Absent or `0` = a normal spin or no specific purchase mode. Code meanings vary by game |
+| `feature_code` | string | Code of the feature triggered this spin. Absent or empty string = no feature triggered. Code meanings vary by game |
 </Card>
 
 ## POST `/bet_rec/detail`
