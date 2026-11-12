@@ -27,6 +27,7 @@
                 "group": "總則",
                 "pages": [
                   "index",
+                  "quickstart",
                   "protocol",
                   "demo"
                 ],
@@ -76,6 +77,7 @@
                 "group": "通则",
                 "pages": [
                   "zh-CN/index",
+                  "zh-CN/quickstart",
                   "zh-CN/protocol",
                   "zh-CN/demo"
                 ],
@@ -125,6 +127,7 @@
                 "group": "General",
                 "pages": [
                   "en/index",
+                  "en/quickstart",
                   "en/protocol",
                   "en/demo"
                 ],

@@ -12,7 +12,7 @@ Shared spec: [Protocol](/en/protocol), [Error codes](/en/errors).
 1. Obtain `agent_acc` and ApiKey; whitelist the source IPs ([G6](/en/protocol#g6)).
 2. Implement AES-256-GCM. See [Reference vector](/en/protocol#vectors).
 3. `POST /player/add` creates the player. `acc` excludes the agent prefix.
-4. `POST /transfer/add` credits the player. Idempotency: [G1](/en/protocol#g1). HTTP 500 handling: [G3](/en/protocol#g3).
+4. `POST /transfer/add` credits the player. A resend of the same `sn` returns the first result and leaves the balance unchanged ([G1](/en/protocol#g1)). HTTP 500 means undecided, not failed: call `/transfer/check` with the same `sn` — a record found means it was credited; only `TRANSFER_NOT_FOUND` lets you use a new `sn` ([G3](/en/protocol#g3)).
 5. `POST /player/login` returns the lobby or game URL.
 6. Reconciliation: `/transfer/check`, `/transfer/list`, `/bet_rec/*`.
 

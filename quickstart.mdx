@@ -1,0 +1,56 @@
+---
+title: 快速上手
+description: 三步打通第一個加密請求。
+---
+
+所有接口共用同一封套:請求的內層 JSON 經 AES-256-GCM 加密後放進外層 `data`,回應為明文 JSON。先用這三步打通第一個請求,其餘接口如法炮製。
+
+## 1. 驗證你的加密
+
+送出前先確認 AES-256-GCM 實作正確:用測試金鑰加密 `{"acc":"jordan","name":"Amy"}`,結果須與 [參考向量](/protocol#vectors) 一致(該頁附 Node.js 與 Python 範例)。對得上,代表你的加密可用。
+
+## 2. 送出第一個請求
+
+用你的 `agent_acc` 與 ApiKey,把內層 JSON 加密後放進外層 `data`:
+
+```bash
+curl -X POST https://api.at-dev.app/api/v1/player/add \
+  -H 'Content-Type: application/json' \
+  -d '{"agent_acc":"<你的 agent_acc>","data":"<加密後的 hex>"}'
+```
+
+內層明文(加密前):
+
+```json
+{"acc":"jordan","name":"Amy"}
+```
+
+`acc` 不含代理前綴;來源 IP 須先列入白名單（[G6](/protocol#g6)）。
+
+## 3. 讀回應
+
+回應是**明文 JSON,不需解密**。成功時:
+
+```json
+{
+  "api_version": "v1",
+  "code": "OK",
+  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 },
+  "trace_id": "3f2c1a0b-...."
+}
+```
+
+成功與否只看 `code`(成功為 `OK`),所有 `code` 都以 HTTP 200 回傳;欄位細節見 [傳輸協議](/protocol)。
+
+## 下一步
+
+依你的錢包模式往下讀,各有一條對接順序:
+
+<CardGroup cols={2}>
+  <Card title="轉帳錢包" href="/transfer-guide">
+    餘額在平台,商戶以 `/transfer/*` 上下分。
+  </Card>
+  <Card title="單錢包" href="/seamless-guide">
+    餘額在商戶,平台對商戶發 [回調](/callback)。
+  </Card>
+</CardGroup>

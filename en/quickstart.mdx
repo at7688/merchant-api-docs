@@ -1,0 +1,56 @@
+---
+title: Quickstart
+description: Make your first encrypted request in three steps.
+---
+
+Every endpoint shares one envelope: the request's inner JSON is AES-256-GCM encrypted into the outer `data`, and the response is plain JSON. Get one request working with these three steps; the rest follow the same shape.
+
+## 1. Verify your encryption
+
+Before sending, confirm your AES-256-GCM is correct: encrypt `{"acc":"jordan","name":"Amy"}` with the test key and check the result against the [reference vectors](/en/protocol#vectors) (that page includes Node.js and Python samples). A match means your encryption is good.
+
+## 2. Send the first request
+
+With your `agent_acc` and ApiKey, encrypt the inner JSON into the outer `data`:
+
+```bash
+curl -X POST https://api.at-dev.app/api/v1/player/add \
+  -H 'Content-Type: application/json' \
+  -d '{"agent_acc":"<your agent_acc>","data":"<encrypted hex>"}'
+```
+
+Inner plaintext (before encryption):
+
+```json
+{"acc":"jordan","name":"Amy"}
+```
+
+`acc` carries no agent prefix; your source IP must be whitelisted first ([G6](/en/protocol#g6)).
+
+## 3. Read the response
+
+The response is **plain JSON — no decryption**. On success:
+
+```json
+{
+  "api_version": "v1",
+  "code": "OK",
+  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 },
+  "trace_id": "3f2c1a0b-...."
+}
+```
+
+Read success from `code` (`OK` on success); every `code` returns over HTTP 200. Field details: [Protocol](/en/protocol).
+
+## Next
+
+Continue by wallet model — each has its own integration order:
+
+<CardGroup cols={2}>
+  <Card title="Transfer wallet" href="/en/transfer-guide">
+    Balance on the platform; the merchant posts `/transfer/*`.
+  </Card>
+  <Card title="Seamless wallet" href="/en/seamless-guide">
+    Balance on the merchant; the platform issues [callbacks](/en/callback).
+  </Card>
+</CardGroup>

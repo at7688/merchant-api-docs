@@ -12,7 +12,7 @@ description: 转账钱包对接顺序。
 1. 取得 `agent_acc`、ApiKey；将调用源 IP 列入白名单（[G6](/zh-CN/protocol#g6)）。
 2. 实现 AES-256-GCM，见 [参考向量](/zh-CN/protocol#vectors)。
 3. `POST /player/add` 创建玩家。`acc` 不含代理前缀。
-4. `POST /transfer/add` 上分。幂等见 [G1](/zh-CN/protocol#g1)；HTTP 500 的处置见 [G3](/zh-CN/protocol#g3)。
+4. `POST /transfer/add` 上分。同一 `sn` 重送返回首次结果、余额不变（[G1](/zh-CN/protocol#g1)）。HTTP 500＝结果未决，非失败：以原 `sn` 调用 `/transfer/check`，查得即已入账、返回 `TRANSFER_NOT_FOUND` 才可换新 `sn`（[G3](/zh-CN/protocol#g3)）。
 5. `POST /player/login` 取得大厅或游戏 URL。
 6. 对账：`/transfer/check`、`/transfer/list`、`/bet_rec/*`。
 

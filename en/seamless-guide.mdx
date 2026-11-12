@@ -13,7 +13,7 @@ Shared spec: [Protocol](/en/protocol), [Error codes](/en/errors). Callback spec:
 2. Implement encryption for merchant → platform, and decryption for platform → merchant callbacks. Same key.
 3. `POST /player/add`, `POST /player/login`. `acc` excludes the agent prefix.
 4. Implement the callbacks: `/player/balance`, `/player/bet`, `/player/win`, `/player/refund`.
-5. Implement idempotent de-duplication per [G1](/en/protocol#g1), and accept later resends of the same `sn` per [G2](/en/protocol#g2).
+5. De-duplicate idempotently: process each `sn` once and return the first result on a resend ([G1](/en/protocol#g1)). The platform may also re-send callbacks for the same `sn` (e.g. a refund after an undecided bet, or a win resend), which you must accept ([G2](/en/protocol#g2)).
 6. Reconciliation: `/bet_rec/query` covers bets only. An `sn` starting with `SC_` (scratch-card payout) uses `/scratch_card_rec/list`; one starting with `TOUR_` (tournament payout) has no query endpoint — use your own ledger.
 
 Next: [Players](/en/player), [Callbacks](/en/callback), [Records](/en/records), [Granted spins](/en/free-round).

@@ -13,7 +13,7 @@ description: 單錢包對接順序。
 2. 實作商戶 → 平台之加密，以及平台 → 商戶回調之解密。金鑰相同。
 3. `POST /player/add`、`POST /player/login`。`acc` 不含代理前綴。
 4. 實作回調：`/player/balance`、`/player/bet`、`/player/win`、`/player/refund`。
-5. 依 [G1](/protocol#g1) 實作冪等去重，依 [G2](/protocol#g2) 接受同一 `sn` 的後續重送。
+5. 冪等去重：同一 `sn` 只處理一次、重送回首次結果（[G1](/protocol#g1)）。平台也可能對同一 `sn` 再發回調（如 bet 未決後補 refund、win 補送），需接受（[G2](/protocol#g2)）。
 6. 對帳：`/bet_rec/query` 只涵蓋注單。`SC_` 開頭（刮刮卡派彩）用 `/scratch_card_rec/list`；`TOUR_` 開頭（錦標賽派彩）無查詢接口，以商戶帳本為準。
 
 後續接口：[玩家](/player)、[回調](/callback)、[紀錄](/records)、[贈送旋轉](/free-round)。

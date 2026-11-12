@@ -1,0 +1,56 @@
+---
+title: 快速上手
+description: 三步打通第一个加密请求。
+---
+
+所有接口共用同一信封:请求的内层 JSON 经 AES-256-GCM 加密后放入外层 `data`,响应为明文 JSON。先用这三步打通第一个请求,其余接口如法炮制。
+
+## 1. 验证你的加密
+
+发送前先确认 AES-256-GCM 实现正确:用测试密钥加密 `{"acc":"jordan","name":"Amy"}`,结果须与 [参考向量](/zh-CN/protocol#vectors) 一致(该页附 Node.js 与 Python 示例)。对得上,代表你的加密可用。
+
+## 2. 发送第一个请求
+
+用你的 `agent_acc` 与 ApiKey,把内层 JSON 加密后放入外层 `data`:
+
+```bash
+curl -X POST https://api.at-dev.app/api/v1/player/add \
+  -H 'Content-Type: application/json' \
+  -d '{"agent_acc":"<你的 agent_acc>","data":"<加密后的 hex>"}'
+```
+
+内层明文(加密前):
+
+```json
+{"acc":"jordan","name":"Amy"}
+```
+
+`acc` 不含代理前缀;来源 IP 须先列入白名单（[G6](/zh-CN/protocol#g6)）。
+
+## 3. 读响应
+
+响应是**明文 JSON,不需解密**。成功时:
+
+```json
+{
+  "api_version": "v1",
+  "code": "OK",
+  "data": { "acc": "kiwi01_jordan", "player_acc": "jordan", "player_id": 123 },
+  "trace_id": "3f2c1a0b-...."
+}
+```
+
+成功与否只看 `code`(成功为 `OK`),所有 `code` 都以 HTTP 200 返回;字段细节见 [传输协议](/zh-CN/protocol)。
+
+## 下一步
+
+按你的钱包模式往下读,各有一条对接顺序:
+
+<CardGroup cols={2}>
+  <Card title="转账钱包" href="/zh-CN/transfer-guide">
+    余额在平台,商户以 `/transfer/*` 上分、下分。
+  </Card>
+  <Card title="单一钱包" href="/zh-CN/seamless-guide">
+    余额在商户,平台向商户发起 [回调](/zh-CN/callback)。
+  </Card>
+</CardGroup>
