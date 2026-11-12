@@ -1,6 +1,6 @@
 ---
 title: 简介
-description: 环境、钱包模式与账号规则。
+description: 环境、钱包模式与凭证。
 ---
 
 AT Gaming 商户 API 提供玩家账户、资金、游戏进入与账务查询。全部调用为 `HTTPS` `POST`，`Content-Type: application/json; charset=utf-8`。内层参数经 AES-256-GCM 加密后置于外层 `data`。规格见 [传输协议](/zh-CN/protocol)。
@@ -31,19 +31,6 @@ AT Gaming 商户 API 提供玩家账户、资金、游戏进入与账务查询�
 | ApiKey | 64 位十六进制字符（32 字节），用于内层加解密 |
 
 密钥保管与来源地址白名单见 [G6](/zh-CN/protocol#g6)。
-
-## 账号
-
-内层 `acc` 为玩家账号（不含代理前缀）。平台存储为 `{agent_acc}_{acc}`，例如 `kiwi01_jordan`。
-
-| 方向 | 字段 | 例 |
-|---|---|---|
-| 商户 → 平台 | `acc` | `jordan` |
-| 平台 → 商户（回调 balance） | `acc` | `kiwi01_jordan` |
-| 平台 → 商户（回调 balance） | `player_acc` | `jordan` |
-| 平台 → 商户（bet / win / refund） | `acc` | `jordan` |
-
-重复附加前缀返回 `ACC_NOT_FOUND`。
 
 ## 成功条件
 

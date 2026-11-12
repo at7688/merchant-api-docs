@@ -3,7 +3,7 @@ title: 玩家
 description: 创建、余额、登录、登出。
 ---
 
-内层 `acc` 不含代理前缀。时间为 Unix 秒。成功时外层报文见 [传输协议](/zh-CN/protocol)，下列仅列 `data`。
+内层 `acc` 不含代理前缀（误送完整账号如 `kiwi01_jordan` 返回 `ACC_NOT_FOUND`）。时间为 Unix 秒。成功时外层报文见 [传输协议](/zh-CN/protocol)，下列仅列 `data`。
 
 ## POST `/player/add`
 

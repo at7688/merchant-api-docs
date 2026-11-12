@@ -1,6 +1,6 @@
 ---
 title: Overview
-description: Environments, wallet models, and account rules.
+description: Environments, wallet models, and credentials.
 ---
 
 The AT Gaming merchant API covers player accounts, funds, game entry, and reporting. All calls are `HTTPS` `POST` with `Content-Type: application/json; charset=utf-8`. Inner parameters are AES-256-GCM encrypted into outer `data`. See [Protocol](/en/protocol).
@@ -31,19 +31,6 @@ Select the integration path by wallet model. Encryption and the response envelop
 | ApiKey | 64 hex characters (32 bytes) for inner encrypt/decrypt |
 
 Key handling and source IP whitelisting: see [G6](/en/protocol#g6).
-
-## Accounts
-
-Inner `acc` is the player account without the agent prefix. Stored as `{agent_acc}_{acc}`, e.g. `kiwi01_jordan`.
-
-| Direction | Field | Example |
-|---|---|---|
-| Merchant → platform | `acc` | `jordan` |
-| Platform → merchant (balance callback) | `acc` | `kiwi01_jordan` |
-| Platform → merchant (balance callback) | `player_acc` | `jordan` |
-| Platform → merchant (bet / win / refund) | `acc` | `jordan` |
-
-A duplicated prefix returns `ACC_NOT_FOUND`.
 
 ## Success
 
