@@ -22,7 +22,7 @@ description: Envelope, AES-256-GCM, HTTP, code, and the general rules.
 | `acc` | Trimmed, lowercased, then combined with the agent account as `{agent_acc}_{acc}` |
 | `game_code` | Trimmed and uppercased. Applies to login and granted spins |
 | Time | Unix seconds (10 digits). The accounting day cut is UTC+8 (`Asia/Shanghai`) 00:00 |
-| Amounts | JSON number. Up to 2 decimal places (database `DECIMAL`) |
+| Amounts | JSON number (database `DECIMAL`). Amounts you send: up to 2 decimal places. Amounts in our callbacks: up to 4 decimal places (slot wins, and debits multiplied by a buy multiplier, can have 3 or 4) |
 | Optional filters | Empty string or 0 means the condition is not applied |
 | Malformed request | Outer or inner JSON unparseable, wrong field type, or failed validation — all return `PARAM_INVALID` |
 
@@ -188,8 +188,10 @@ Exceeding the limit returns `TOO_MANY_REQUESTS`.
 
 | Subject | Period |
 |---|---|
+| Bets (`/bet_rec/list`, `/bet_rec/query`) | 60 days. Expired bets are removed: `/bet_rec/list` returns an empty list, `/bet_rec/query` returns `BET_NOT_FOUND` for that row |
 | Aggregates (`/bet_report/list`) | 60 days. An earlier window returns an empty list (`code` is `OK`, `row_count` is 0) |
-| Bets (`/bet_rec/list`, `/bet_rec/query`) | Not subject to the 60-day limit |
+| Transfers (`/transfer/list`) | 60 days |
+| JP (`/jp_rec/list`), scratch cards (`/scratch_card_rec/list`), granted-spin records (`/free_round/list`) | No fixed limit; not currently pruned |
 | Merchant-side `sn` de-duplication records | At least 90 days |
 | Granted spins with no `expire_at` | 30 days from the grant |
 

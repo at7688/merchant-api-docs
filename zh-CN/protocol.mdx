@@ -22,7 +22,7 @@ description: 报文、AES-256-GCM、HTTP、code 与通则。
 | `acc` | 去首尾空白后转小写，再与代理账号拼成 `{agent_acc}_{acc}` |
 | `game_code` | 去空白后转大写。登录、赠送旋转皆然 |
 | 时间 | Unix 秒（10 位）。账务日界为 UTC+8（`Asia/Shanghai`）当日 00:00 |
-| 金额 | JSON number。小数最多两位（数据库 `DECIMAL`） |
+| 金额 | JSON number（数据库 `DECIMAL`）。商户送来的金额小数最多两位；我方回调的金额小数最多四位（老虎机赢分、乘上购买倍数的扣款可能有三、四位） |
 | 选填筛选 | 空字符串或 0 表示不套该条件 |
 | 请求不合格 | 外层或内层 JSON 无法解析、字段类型不对、或字段验证未通过，一律 `PARAM_INVALID` |
 
@@ -188,8 +188,10 @@ HTTP 500、连接中断或超时：不得假设成功或失败，不得径行冲
 
 | 对象 | 期限 |
 |---|---|
+| 注单（`/bet_rec/list`、`/bet_rec/query`） | 60 天。逾期之注单已移除：`/bet_rec/list` 返回空列表，`/bet_rec/query` 该行返回 `BET_NOT_FOUND` |
 | 汇总数据（`/bet_report/list`） | 60 天。更早的区间返回空列表（`code` 为 `OK`、`row_count` 为 0） |
-| 注单（`/bet_rec/list`、`/bet_rec/query`） | 不受 60 天限制 |
+| 转账（`/transfer/list`） | 60 天 |
+| JP（`/jp_rec/list`）、刮刮卡（`/scratch_card_rec/list`）、赠送旋转记录（`/free_round/list`） | 无固定上限，目前不自动清除 |
 | 商户端 `sn` 去重记录 | 至少 90 天 |
 | 赠送旋转未指定 `expire_at` | 自发放起 30 日 |
 
