@@ -113,7 +113,7 @@ Credit. `game_code` comes from three sources:
 
 ## POST `{base}/player/refund`
 
-Returns the amount the `/player/bet` with the same `sn` actually debited.
+Returns the amount the `/player/bet` with the same `sn` actually debited. The platform sends it only when the debit outcome was uncertain, so verify before crediting (see [Constraints](#constraints) 2).
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
@@ -140,5 +140,5 @@ Returns the amount the `/player/bet` with the same `sn` actually debited.
 ## Constraints {#constraints}
 
 1. `TOURNAMENT` and `SCRATCH_CARD` are in neither `/game/list` nor `/bet_rec/query`. They must not be rejected on that basis.
-2. `/player/refund`: a merchant that never received the bet with that `sn`, or rejected it with an error `code`, returns `OK` and must not credit.
+2. `/player/refund`: verify by `sn` that the bet was actually debited. Credit `amount` back only if it was debited and not yet refunded; if it was never debited (bet not received, or rejected with an error `code`) or already refunded, return `OK` and do not credit.
 3. Granted-spin consumption sends no `/player/bet`. Settlement may still send `/player/win` (`amount` may be 0). See [Granted spins](/en/free-round).

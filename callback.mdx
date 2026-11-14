@@ -113,7 +113,7 @@ description: 平台對商戶之回調。逾時 15 秒。
 
 ## POST `{base}/player/refund`
 
-退回同一 `sn` 之 `/player/bet` 實際扣下的金額。
+退回同一 `sn` 之 `/player/bet` 實際扣下的金額。平台僅在扣款結果未確定時送出，加款前先核對（見 [約束](#constraints) 2）。
 
 <Card title="請求（解密後）" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |
@@ -140,5 +140,5 @@ description: 平台對商戶之回調。逾時 15 秒。
 ## 約束 {#constraints}
 
 1. `TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 內，亦不在 `/bet_rec/query` 內。不得據此拒收。
-2. `/player/refund`：商戶未曾收到該 `sn` 之 bet，或曾以錯誤 `code` 拒絕者，回 `OK` 且不得加款。
+2. `/player/refund`：先以 `sn` 核對是否確實扣過該筆 bet。扣過且未退過才退回 `amount`；未扣過（未收到該 bet，或曾以錯誤 `code` 拒絕）或已退過，回 `OK` 且不加款。
 3. 贈送旋轉消耗時不發 `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。見 [贈送旋轉](/free-round)。

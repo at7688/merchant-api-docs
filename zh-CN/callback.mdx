@@ -113,7 +113,7 @@ description: 平台对商户的回调。超时 15 秒。
 
 ## POST `{base}/player/refund`
 
-退回同一 `sn` 的 `/player/bet` 实际扣下的金额。
+退回同一 `sn` 的 `/player/bet` 实际扣下的金额。平台仅在扣款结果未确定时发送，加款前先核对（见 [约束](#constraints) 2）。
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |
@@ -140,5 +140,5 @@ description: 平台对商户的回调。超时 15 秒。
 ## 约束 {#constraints}
 
 1. `TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 内，亦不在 `/bet_rec/query` 内。不得据此拒收。
-2. `/player/refund`：商户未曾收到该 `sn` 的 bet，或曾以错误 `code` 拒绝者，回 `OK` 且不得加款。
+2. `/player/refund`：先以 `sn` 核对是否确实扣过该笔 bet。扣过且未退过才退回 `amount`；未扣过（未收到该 bet，或曾以错误 `code` 拒绝）或已退过，回 `OK` 且不加款。
 3. 赠送旋转消耗时不发 `/player/bet`，结算仍可能发 `/player/win`（`amount` 可为 0）。见 [赠送旋转](/zh-CN/free-round)。
