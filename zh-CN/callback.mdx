@@ -17,7 +17,7 @@ description: 平台对商户的回调。超时 15 秒。
 | `Content-Type` | `application/json` |
 | 超时 | 15 秒，含连接与读取 |
 | 商户响应 | JSON，顶层必有 `code`。成功为 `OK`。其余顶层字段忽略 |
-| 商户 HTTP 状态 | 须为 2xx，否则平台视为结果未决 |
+| 商户 HTTP 状态 | 须为 2xx。4xx 视为未处理（`/player/bet` 视同未扣款，不发 `/player/refund`）；5xx 与超时视为结果未决 |
 
 幂等见 [G1](/zh-CN/protocol#g1)，重发见 [G2](/zh-CN/protocol#g2)，结果未决见 [G3](/zh-CN/protocol#g3)。
 
@@ -113,7 +113,7 @@ description: 平台对商户的回调。超时 15 秒。
 
 ## POST `{base}/player/refund`
 
-退回同一 `sn` 的 `/player/bet` 实际扣下的金额。平台仅在扣款结果未确定时发送，加款前先核对（见 [约束](#constraints) 2）。
+退回同一 `sn` 的 `/player/bet` 实际扣下的金额。该 `sn` 可能未曾扣款，加款前先核对（见 [约束](#constraints) 2）。
 
 <Card title="请求（解密后）" icon="arrow-down-to-bracket">
 | 字段 | 类型 | 说明 |

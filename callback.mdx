@@ -17,7 +17,7 @@ description: 平台對商戶之回調。逾時 15 秒。
 | `Content-Type` | `application/json` |
 | 逾時 | 15 秒，含連線與讀取 |
 | 商戶回應 | JSON，頂層必有 `code`。成功為 `OK`。其餘頂層欄位忽略 |
-| 商戶 HTTP 狀態 | 須為 2xx，否則平台視為結果未決 |
+| 商戶 HTTP 狀態 | 須為 2xx。4xx 視為未處理（`/player/bet` 視同未扣款，不送 `/player/refund`）；5xx 與逾時視為結果未決 |
 
 冪等見 [G1](/protocol#g1)，重送見 [G2](/protocol#g2)，結果未決見 [G3](/protocol#g3)。
 
@@ -113,7 +113,7 @@ description: 平台對商戶之回調。逾時 15 秒。
 
 ## POST `{base}/player/refund`
 
-退回同一 `sn` 之 `/player/bet` 實際扣下的金額。平台僅在扣款結果未確定時送出，加款前先核對（見 [約束](#constraints) 2）。
+退回同一 `sn` 之 `/player/bet` 實際扣下的金額。該 `sn` 可能未曾扣款，加款前先核對（見 [約束](#constraints) 2）。
 
 <Card title="請求（解密後）" icon="arrow-down-to-bracket">
 | 欄位 | 型別 | 說明 |

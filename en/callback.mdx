@@ -17,7 +17,7 @@ Seamless wallet only. The platform `POST`s to `{MerchantApiUrl}{path}`, for exam
 | `Content-Type` | `application/json` |
 | Timeout | 15 seconds, connect and read included |
 | Merchant response | JSON with a top-level `code`. Success is `OK`. Other top-level fields are ignored |
-| Merchant HTTP status | Must be 2xx. Otherwise the platform treats the outcome as undetermined |
+| Merchant HTTP status | Must be 2xx. 4xx is treated as not processed (a `/player/bet` counts as not debited; no `/player/refund` is sent). 5xx and timeouts are treated as undetermined |
 
 Idempotency: [G1](/en/protocol#g1). Resends: [G2](/en/protocol#g2). Undetermined outcome: [G3](/en/protocol#g3).
 
@@ -113,7 +113,7 @@ Credit. `game_code` comes from three sources:
 
 ## POST `{base}/player/refund`
 
-Returns the amount the `/player/bet` with the same `sn` actually debited. The platform sends it only when the debit outcome was uncertain, so verify before crediting (see [Constraints](#constraints) 2).
+Returns the amount the `/player/bet` with the same `sn` actually debited. The `sn` may never have been debited, so verify before crediting (see [Constraints](#constraints) 2).
 
 <Card title="Request (after decrypt)" icon="arrow-down-to-bracket">
 | Field | Type | Description |
