@@ -11,12 +11,13 @@ description: 平台对商户的回调。超时 15 秒。
 
 | 项目 | 规定 |
 |---|---|
-| `MerchantApiUrl` | 与路径直接拼接，不得以 `/` 结尾 |
+| `MerchantApiUrl` | 以 `agent_acc` 为单位，由平台设置。与路径直接拼接，不得以 `/` 结尾 |
 | 请求报文 | 仅 `data`，无 `agent_acc` |
-| 加解密 | 与商户 API 同一 ApiKey、同一排列，见 [传输协议](/zh-CN/protocol) |
+| 加解密 | 使用玩家所属 `agent_acc` 的 ApiKey，排列同商户 API，见 [传输协议](/zh-CN/protocol) |
+| 多个 `agent_acc` | 不同 `agent_acc` 下可能有相同的玩家账号（不含前缀）。各 `agent_acc` 应设置不同的 `MerchantApiUrl` |
 | `Content-Type` | `application/json` |
-| 超时 | 15 秒，含连接与读取 |
-| 商户响应 | JSON，顶层必有 `code`。成功为 `OK`。其余顶层字段忽略 |
+| 超时 | 平台等待 15 秒，含连接与读取。商户应在 10 秒内响应 |
+| 商户响应 | JSON，顶层必有 `code`（string）。`code` 为 `OK` 时，`/player/balance`、`/player/bet`、`/player/win` 须带 `data`，字段见各接口响应；`data` 不是对象或金额字段不是 JSON number（如字符串）时，整笔响应无法解析，视为结果未决。`code` 非 `OK` 时，无论 `data` 为何均按 `code` 判定。其余顶层字段忽略 |
 | 商户 HTTP 状态 | 须为 2xx。4xx 视为未处理（`/player/bet` 视同未扣款，不发 `/player/refund`）；5xx 与超时视为结果未决 |
 
 幂等见 [G1](/zh-CN/protocol#g1)，重发见 [G2](/zh-CN/protocol#g2)，结果未决见 [G3](/zh-CN/protocol#g3)。
@@ -79,7 +80,7 @@ description: 平台对商户的回调。超时 15 秒。
 
 | `game_code` | `sn` 形式 | 前置 `/player/bet` | 对账方式 |
 |---|---|---|---|
-| `/game/list` 的 `code` | 注单单号 | 有 | `/bet_rec/query` |
+| `/game/list` 的 `code` | 注单单号 | 有；赠送旋转无 | `/bet_rec/query` |
 | [`TOURNAMENT`](/zh-CN/enums#game-code) | `TOUR_{赛事id}_{名次}_{会员id}` | 无 | 无查询接口，以商户账本为准 |
 | [`SCRATCH_CARD`](/zh-CN/enums#game-code) | `SC_{票券id}` | 无 | [`/scratch_card_rec/list`](/zh-CN/records) |
 
@@ -91,7 +92,7 @@ description: 平台对商户的回调。超时 15 秒。
 | `game_code` | string | 游戏代码、[`TOURNAMENT`](/zh-CN/enums#game-code) 或 [`SCRATCH_CARD`](/zh-CN/enums#game-code)，见上表 |
 | `acc` | string | 不含前缀 |
 | `name` | string | 显示名称 |
-| `amount` | number | 增加额，≥ 0（含未中奖） |
+| `amount` | number | 增加额，≥ 0（含未中奖）。一般注单为该局所有赢分合计，已含 JP 奖金及免费游戏（局内触发或购买）赢分 |
 | `beted_at` | integer | 下注时间，Unix 秒 |
 | `settled_at` | integer | 结算时间，Unix 秒 |
 </Card>
@@ -139,6 +140,6 @@ description: 平台对商户的回调。超时 15 秒。
 
 ## 约束 {#constraints}
 
-1. `TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 内，亦不在 `/bet_rec/query` 内。不得据此拒收。
+1. 不得以查无对应的 `/player/bet`、`game_code` 不在 `/game/list` 或 `sn` 不在 `/bet_rec/query` 为由拒收 `/player/win`。`TOURNAMENT`、`SCRATCH_CARD` 与赠送旋转均无前置 `/player/bet`；`TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 与 `/bet_rec/query` 内。
 2. `/player/refund`：先以 `sn` 核对是否确实扣过该笔 bet。扣过且未退过才退回 `amount`；未扣过（未收到该 bet，或曾以错误 `code` 拒绝）或已退过，回 `OK` 且不加款。
-3. 赠送旋转消耗时不发 `/player/bet`，结算仍可能发 `/player/win`（`amount` 可为 0）。见 [赠送旋转](/zh-CN/free-round)。
+3. 赠送旋转消耗时不发 `/player/bet`，结算仍可能发 `/player/win`（`amount` 可为 0），其 `sn` 与 `game_code` 形式与一般注单相同。见 [赠送旋转](/zh-CN/free-round)。

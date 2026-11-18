@@ -66,7 +66,7 @@ description: 注單、JP、報表、刮刮卡。
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `sn` | string | 注單單號 |
-| `round_sn` | string | 局號 |
+| `round_sn` | string | 目前未使用，固定為空字串。以 `sn` 識別注單 |
 | `game_category_code` | string | [遊戲類別](/enums#game-category) |
 | `game_type_code` | string | 類型 |
 | `game_code` | string | 遊戲代碼 |
@@ -76,7 +76,7 @@ description: 注單、JP、報表、刮刮卡。
 | `win_amount` | number | 派彩額 |
 | `valid_amount` | number | 有效投注。未結算（`PENDING`）與退款（`REFUND`）注單一律為 0 |
 | `result` | number | 輸贏。已結算（`FINISH`）為派彩 − 投注；未結算與退款注單一律為 0，非 −投注額 |
-| `free_game_type` | string | [免費遊戲](/enums#free-game-type) |
+| `free_game_type` | string | 已結算（`FINISH`）為 [免費遊戲](/enums#free-game-type) 之一；未結算（`PENDING`）為空字串；退款（`REFUND`）為空字串或 `NONE` |
 | `beted_at` | integer | 下注時間，Unix 秒 |
 | `settled_at` | integer | 結算時間，Unix 秒；未結算可為 0 |
 | `status` | string | [注單狀態](/enums#bet-status) |
@@ -84,12 +84,15 @@ description: 注單、JP、報表、刮刮卡。
 | `member` | object | 玩家摘要 |
 | `slot_bet_detail` | object | 遊戲端明細，結構依遊戲而異 |
 
-`slot_bet_detail` 結構依遊戲而異，但下列欄位在有提供的遊戲含義一致，可辨識購買與特色玩法（皆選填，省略即代表無）：
+`slot_bet_detail` 結構依遊戲而異，但下列欄位在有提供的遊戲含義一致（皆選填，省略即代表無）：
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `buy_option` | integer | 玩家此轉購買的玩法代碼（例如買免費遊戲、全盤獎勵）。省略或 `0`＝一般轉或未指定購買玩法。代碼定義依遊戲而異 |
 | `feature_code` | string | 此轉觸發的特色玩法代碼。省略或空字串＝未觸發特色。代碼定義依遊戲而異 |
+| `jp_win_amount` | number | 該局 JP 獎金，已含在 `win_amount` 內 |
+| `lucky_win_amount` | number | 明細，已含在 `win_amount` 內 |
+| `joy_fall_win_amount` | number | 明細，已含在 `win_amount` 內 |
 </Card>
 
 ## POST `/bet_rec/detail`
@@ -304,3 +307,4 @@ description: 注單、JP、報表、刮刮卡。
 1. `/bet_report/list` 兩個 `time_unit` 母體不同，不得互相加總或對帳。
 2. 贈送旋轉產生之注單仍在 `/bet_rec/list`，`bet_amount` 為名目注額。本接口不另給「是否贈送」欄位。
 3. 維護中遊戲仍出現於 `/game/list`，登入時才回 `GAME_MAINTAIN`。
+4. `slot_bet_detail` 之金額欄位為明細，相加不一定等於 `win_amount`。入帳與對帳以 `win_amount` 為準。

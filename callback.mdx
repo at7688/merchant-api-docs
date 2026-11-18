@@ -11,12 +11,13 @@ description: 平台對商戶之回調。逾時 15 秒。
 
 | 項目 | 規定 |
 |---|---|
-| `MerchantApiUrl` | 與路徑直接串接，不得以 `/` 結尾 |
+| `MerchantApiUrl` | 以 `agent_acc` 為單位，由平台設定。與路徑直接串接，不得以 `/` 結尾 |
 | 請求本文 | 僅 `data`，無 `agent_acc` |
-| 加解密 | 與商戶 API 同一 ApiKey、同一排列，見 [傳輸協議](/protocol) |
+| 加解密 | 使用玩家所屬 `agent_acc` 之 ApiKey，排列同商戶 API，見 [傳輸協議](/protocol) |
+| 多個 `agent_acc` | 不同 `agent_acc` 下可能有相同之玩家帳號（不含前綴）。各 `agent_acc` 應設定不同之 `MerchantApiUrl` |
 | `Content-Type` | `application/json` |
-| 逾時 | 15 秒，含連線與讀取 |
-| 商戶回應 | JSON，頂層必有 `code`。成功為 `OK`。其餘頂層欄位忽略 |
+| 逾時 | 平台等待 15 秒，含連線與讀取。商戶應於 10 秒內回應 |
+| 商戶回應 | JSON，頂層必有 `code`（string）。`code` 為 `OK` 時，`/player/balance`、`/player/bet`、`/player/win` 須帶 `data`，欄位見各接口回應；`data` 不是物件或金額欄位不是 JSON number（如字串）時，整筆回應無法解析，視為結果未決。`code` 非 `OK` 時，不論 `data` 為何皆依 `code` 判定。其餘頂層欄位忽略 |
 | 商戶 HTTP 狀態 | 須為 2xx。4xx 視為未處理（`/player/bet` 視同未扣款，不送 `/player/refund`）；5xx 與逾時視為結果未決 |
 
 冪等見 [G1](/protocol#g1)，重送見 [G2](/protocol#g2)，結果未決見 [G3](/protocol#g3)。
@@ -79,7 +80,7 @@ description: 平台對商戶之回調。逾時 15 秒。
 
 | `game_code` | `sn` 形式 | 前導 `/player/bet` | 對帳方式 |
 |---|---|---|---|
-| `/game/list` 之 `code` | 注單單號 | 有 | `/bet_rec/query` |
+| `/game/list` 之 `code` | 注單單號 | 有；贈送旋轉無 | `/bet_rec/query` |
 | [`TOURNAMENT`](/enums#game-code) | `TOUR_{賽事id}_{名次}_{會員id}` | 無 | 無查詢接口，以商戶帳本為準 |
 | [`SCRATCH_CARD`](/enums#game-code) | `SC_{票券id}` | 無 | [`/scratch_card_rec/list`](/records) |
 
@@ -91,7 +92,7 @@ description: 平台對商戶之回調。逾時 15 秒。
 | `game_code` | string | 遊戲代碼、[`TOURNAMENT`](/enums#game-code) 或 [`SCRATCH_CARD`](/enums#game-code)，見上表 |
 | `acc` | string | 不含前綴 |
 | `name` | string | 顯示名稱 |
-| `amount` | number | 增加額，≥ 0（含未中獎） |
+| `amount` | number | 增加額，≥ 0（含未中獎）。一般注單為該局所有贏分合計，已含 JP 獎金及免費遊戲（局內觸發或購買）贏分 |
 | `beted_at` | integer | 下注時間，Unix 秒 |
 | `settled_at` | integer | 結算時間，Unix 秒 |
 </Card>
@@ -139,6 +140,6 @@ description: 平台對商戶之回調。逾時 15 秒。
 
 ## 約束 {#constraints}
 
-1. `TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 內，亦不在 `/bet_rec/query` 內。不得據此拒收。
+1. 不得以查無對應之 `/player/bet`、`game_code` 不在 `/game/list` 或 `sn` 不在 `/bet_rec/query` 為由拒收 `/player/win`。`TOURNAMENT`、`SCRATCH_CARD` 與贈送旋轉皆無前導 `/player/bet`；`TOURNAMENT`、`SCRATCH_CARD` 不在 `/game/list` 與 `/bet_rec/query` 內。
 2. `/player/refund`：先以 `sn` 核對是否確實扣過該筆 bet。扣過且未退過才退回 `amount`；未扣過（未收到該 bet，或曾以錯誤 `code` 拒絕）或已退過，回 `OK` 且不加款。
-3. 贈送旋轉消耗時不發 `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0）。見 [贈送旋轉](/free-round)。
+3. 贈送旋轉消耗時不發 `/player/bet`，結算仍可能發 `/player/win`（`amount` 可為 0），其 `sn` 與 `game_code` 形式與一般注單相同。見 [贈送旋轉](/free-round)。

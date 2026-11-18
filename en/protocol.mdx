@@ -62,7 +62,7 @@ Seamless-wallet callbacks use the same key and the same layout. The envelope is 
 
 ### Reference vector {#vectors}
 
-The plaintext is `{"acc":"jordan","name":"Amy"}` with no whitespace and no newlines.
+The plaintext is `{"acc":"jordan","name":"Amy"}` with no whitespace and no newlines. It is the inner body of `/player/add`, not a callback sample.
 
 | | hex |
 |---|---|
@@ -133,12 +133,24 @@ These six rules span multiple endpoints. Endpoint pages cite them by number.
 
 ### G1 Idempotency key {#g1}
 
+Platform API (`/transfer/add`, `/free_round/add`):
+
 | Item | Rule |
 |---|---|
-| Key | `sn`. `/transfer/add`, `/free_round/add` and seamless `bet` / `win` / `refund` all detect duplicates by `sn` |
+| Key | `sn` |
 | First receipt | Executed, and the result persisted |
 | Duplicate, first attempt succeeded | The first result is returned; the balance does not change |
 | Duplicate, first attempt rejected | The first error `code` is returned |
+
+Seamless-wallet callbacks (`/player/bet`, `/player/win`, `/player/refund`):
+
+| Item | Rule |
+|---|---|
+| Key | Callback path + `sn` |
+| Same `sn` across paths | `/player/win` and `/player/refund` reuse the `sn` of the round's `/player/bet`. `/player/bet` followed by `/player/win` or `/player/refund` on the same `sn` is the normal flow, not a duplicate |
+| Duplicate, previously processed successfully | Return `OK`; the balance does not change |
+| Duplicate, not previously processed successfully (a non-`OK` was returned) | Treat it as a new request; the merchant decides from the current state whether to process it. Return `OK` if processed successfully |
+| Non-`OK` | A non-`OK` must not be returned merely because the request is a duplicate. The platform treats any non-`OK` as a failure |
 | Merchant de-duplication records | Kept at least 90 days |
 
 ### G2 Callback resends {#g2}
@@ -149,15 +161,16 @@ The same packet is not resent at the moment of a timeout. The same `sn` may rece
 |---|---|
 | `/player/bet` outcome undetermined | `/player/refund` (automatic or operator resend) |
 | `/player/win` did not succeed (ordinary bet) | Another `/player/win` (game retry or operator resend) |
-| `/player/win` did not succeed (tournament payout) | No automatic resend; an operator resends it. Not resent if the merchant rejected it with an error `code` |
+| `/player/win` did not succeed (tournament payout) | No automatic resend; an operator resends it |
+| `/player/win` did not succeed (scratch-card payout) | No automatic resend. The ticket reverts to claimed, not scratched ([`CLAIMED`](/en/enums#scratch-status)); when the player scratches it again, `/player/win` is sent again with the same `sn` |
 | Stuck bet cancelled after timeout | `/player/refund` |
 
 Automatic resends of `/player/refund`:
 
 | Item | Rule |
 |---|---|
-| First interval | 60 seconds |
-| Backoff | 60 × 2^n seconds, one interval capped at 1 hour |
+| First send | For an undetermined `/player/bet`, about 2 to 3 minutes after the outcome became undetermined; for a stuck bet cancelled after timeout, within about 1 minute of the cancellation |
+| Backoff | After each unsuccessful attempt, intervals of 60, 120, 240 seconds… (60 × 2^n seconds); one interval capped at 1 hour |
 | Total window | 24 hours |
 | After 24 hours | Automatic resends stop and the item becomes pending-overdue; an operator resends it or closes it manually, with no deadline |
 

@@ -66,7 +66,7 @@ The inner body may be `{}`.
 | Field | Type | Description |
 |---|---|---|
 | `sn` | string | Bet id |
-| `round_sn` | string | Round id |
+| `round_sn` | string | Currently unused; always an empty string. Identify bets by `sn` |
 | `game_category_code` | string | [Game category](/en/enums#game-category) |
 | `game_type_code` | string | Type |
 | `game_code` | string | Game code |
@@ -76,7 +76,7 @@ The inner body may be `{}`.
 | `win_amount` | number | Payout |
 | `valid_amount` | number | Valid stake. Always 0 for unsettled (`PENDING`) and refunded (`REFUND`) bets |
 | `result` | number | Net. Settled (`FINISH`): payout − stake. Unsettled and refunded bets are always 0, not −stake |
-| `free_game_type` | string | [Free game](/en/enums#free-game-type) |
+| `free_game_type` | string | Settled (`FINISH`): one of [Free game](/en/enums#free-game-type); unsettled (`PENDING`): empty string; refunded (`REFUND`): empty string or `NONE` |
 | `beted_at` | integer | Bet time, Unix seconds |
 | `settled_at` | integer | Settlement time, Unix seconds; 0 when unsettled |
 | `status` | string | [Bet status](/en/enums#bet-status) |
@@ -84,12 +84,15 @@ The inner body may be `{}`.
 | `member` | object | Player profile |
 | `slot_bet_detail` | object | Game-side detail, structure varies by game |
 
-`slot_bet_detail` varies by game, but the following keys carry the same meaning across the games that provide them, and let you tell purchase and feature play apart (both optional; absent means none):
+`slot_bet_detail` varies by game, but the following keys carry the same meaning across the games that provide them (all optional; absent means none):
 
 | Field | Type | Description |
 |---|---|---|
 | `buy_option` | integer | Code of the play mode the player bought this spin (e.g. buy free game, full-board bonus). Absent or `0` = a normal spin or no specific purchase mode. Code meanings vary by game |
 | `feature_code` | string | Code of the feature triggered this spin. Absent or empty string = no feature triggered. Code meanings vary by game |
+| `jp_win_amount` | number | JP prize of the round, included in `win_amount` |
+| `lucky_win_amount` | number | Breakdown item, included in `win_amount` |
+| `joy_fall_win_amount` | number | Breakdown item, included in `win_amount` |
 </Card>
 
 ## POST `/bet_rec/detail`
@@ -304,3 +307,4 @@ Fields as `/bet_rec/detail`.
 1. The two `time_unit` populations of `/bet_report/list` differ. They must not be summed or reconciled against each other.
 2. Bets produced by granted spins still appear in `/bet_rec/list`, with `bet_amount` as the nominal stake. This endpoint carries no separate grant flag.
 3. Games under maintenance still appear in `/game/list`. Login returns `GAME_MAINTAIN`.
+4. The amount fields in `slot_bet_detail` are a breakdown; their sum does not necessarily equal `win_amount`. `win_amount` is authoritative for crediting and reconciliation.

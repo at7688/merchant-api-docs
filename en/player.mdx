@@ -7,7 +7,7 @@ Inner `acc` excludes the agent prefix (sending the full account such as `kiwi01_
 
 ## POST `/player/add`
 
-Creates a member. Currency, JP flag and stake limits are copied from the merchant agent.
+Creates a member. Currency, JP flag and stake limits are copied from the merchant agent. Each `agent_acc` has exactly one currency, set at onboarding and not changeable afterwards; multiple currencies require a separate `agent_acc` for each (each with its own ApiKey and IP whitelist).
 
 <Card title="Request" icon="arrow-up-from-bracket">
 | Field | Required | Type | Description |

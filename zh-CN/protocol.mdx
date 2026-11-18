@@ -62,7 +62,7 @@ UTF-8 JSON 对象，字段为 snake_case。该字节序列为 GCM 明文。例�
 
 ### 参考向量 {#vectors}
 
-明文为 `{"acc":"jordan","name":"Amy"}`（无空白、无换行）。
+明文为 `{"acc":"jordan","name":"Amy"}`（无空白、无换行），即 `/player/add` 的内层，非回调样本。
 
 | | hex |
 |---|---|
@@ -133,12 +133,24 @@ def encrypt(plain: str, key_hex: str) -> str:
 
 ### G1 幂等键 {#g1}
 
+平台 API（`/transfer/add`、`/free_round/add`）：
+
 | 项目 | 规定 |
 |---|---|
-| 键 | `sn`。`/transfer/add`、`/free_round/add` 与单一钱包 `bet`／`win`／`refund` 皆以 `sn` 判定重复 |
+| 键 | `sn` |
 | 首次收到 | 执行并持久化结果 |
 | 重复且首次成功 | 返回首次结果，余额不变 |
 | 重复且首次拒绝 | 返回首次错误 `code` |
+
+单一钱包回调（`/player/bet`、`/player/win`、`/player/refund`）：
+
+| 项目 | 规定 |
+|---|---|
+| 键 | 回调路径＋`sn` |
+| 同一 `sn` 跨路径 | `/player/win`、`/player/refund` 沿用该局 `/player/bet` 的 `sn`。同一 `sn` 先 `/player/bet`、后 `/player/win` 或 `/player/refund` 为正常流程，非重复 |
+| 重复且先前已处理成功 | 回 `OK`，余额不变 |
+| 重复且先前未处理成功（曾回非 `OK`） | 视为新请求，由商户根据当下情况判断是否处理；处理成功回 `OK` |
+| 非 `OK` | 不得仅因重复而回非 `OK`。任何非 `OK` 平台均视为失败 |
 | 商户端去重记录 | 至少保留 90 天 |
 
 ### G2 回调重送 {#g2}
@@ -149,15 +161,16 @@ def encrypt(plain: str, key_hex: str) -> str:
 |---|---|
 | `/player/bet` 结果未决 | `/player/refund`（自动或值班补送） |
 | `/player/win` 未成功（一般注单） | 再发 `/player/win`（游戏重送或值班补送） |
-| `/player/win` 未成功（锦标赛派彩） | 不自动重送，由值班补送。商户以错误 `code` 拒绝者不补送 |
+| `/player/win` 未成功（锦标赛派彩） | 不自动重送，由值班补送 |
+| `/player/win` 未成功（刮刮卡派彩） | 不自动重送。票券恢复为已领未刮（[`CLAIMED`](/zh-CN/enums#scratch-status)），玩家再次刮开时以同一 `sn` 再发 `/player/win` |
 | 注单卡住超时后取消 | `/player/refund` |
 
 `/player/refund` 之自动重送：
 
 | 项目 | 规定 |
 |---|---|
-| 首次间隔 | 60 秒 |
-| 退避 | 60 × 2^n 秒，单次间隔上限 1 小时 |
+| 首次发送 | `/player/bet` 结果未决者，约在结果未决后 2 至 3 分钟；注单卡住超时后取消者，约在取消后 1 分钟内 |
+| 退避 | 每次未成功后依次间隔 60、120、240 秒…（60 × 2^n 秒），单次间隔上限 1 小时 |
 | 总时限 | 24 小时 |
 | 超过 24 小时 | 停止自动重送，转「超时待处理」，改由值班重送或人工结案，无时效上限 |
 

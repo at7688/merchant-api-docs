@@ -11,12 +11,13 @@ Seamless wallet only. The platform `POST`s to `{MerchantApiUrl}{path}`, for exam
 
 | Item | Rule |
 |---|---|
-| `MerchantApiUrl` | Concatenated directly with the path. Must not end with `/` |
+| `MerchantApiUrl` | Set by the platform per `agent_acc`. Concatenated directly with the path. Must not end with `/` |
 | Request body | `data` only. No `agent_acc` |
-| Encryption | Same ApiKey and same layout as the merchant API. See [Protocol](/en/protocol) |
+| Encryption | Uses the ApiKey of the player's `agent_acc`, same layout as the merchant API. See [Protocol](/en/protocol) |
+| Multiple `agent_acc` | The same player account (without the prefix) may exist under different `agent_acc`. Each `agent_acc` should be configured with a different `MerchantApiUrl` |
 | `Content-Type` | `application/json` |
-| Timeout | 15 seconds, connect and read included |
-| Merchant response | JSON with a top-level `code`. Success is `OK`. Other top-level fields are ignored |
+| Timeout | The platform waits 15 seconds, connect and read included. The merchant should respond within 10 seconds |
+| Merchant response | JSON with a top-level `code` (string). When `code` is `OK`, `/player/balance`, `/player/bet` and `/player/win` must include `data`, with the fields listed in each endpoint's response; if `data` is not an object or an amount field is not a JSON number (e.g. a string), the whole response cannot be parsed and is treated as undetermined. When `code` is not `OK`, the outcome is determined by `code` whatever `data` contains. Other top-level fields are ignored |
 | Merchant HTTP status | Must be 2xx. 4xx is treated as not processed (a `/player/bet` counts as not debited; no `/player/refund` is sent). 5xx and timeouts are treated as undetermined |
 
 Idempotency: [G1](/en/protocol#g1). Resends: [G2](/en/protocol#g2). Undetermined outcome: [G3](/en/protocol#g3).
@@ -79,7 +80,7 @@ Credit. `game_code` comes from three sources:
 
 | `game_code` | `sn` shape | Preceding `/player/bet` | Reconcile with |
 |---|---|---|---|
-| A `/game/list` `code` | Bet id | Yes | `/bet_rec/query` |
+| A `/game/list` `code` | Bet id | Yes; none for granted spins | `/bet_rec/query` |
 | [`TOURNAMENT`](/en/enums#game-code) | `TOUR_{tournament}_{rank}_{member}` | No | No query endpoint. The merchant ledger is authoritative |
 | [`SCRATCH_CARD`](/en/enums#game-code) | `SC_{ticket}` | No | [`/scratch_card_rec/list`](/en/records) |
 
@@ -91,7 +92,7 @@ Credit. `game_code` comes from three sources:
 | `game_code` | string | Game code, [`TOURNAMENT`](/en/enums#game-code) or [`SCRATCH_CARD`](/en/enums#game-code). See the table above |
 | `acc` | string | Without the prefix |
 | `name` | string | Display name |
-| `amount` | number | Credit amount, ≥ 0 (including no win) |
+| `amount` | number | Credit amount, ≥ 0 (including no win). For an ordinary bet, the total of all winnings in the round, JP prizes and free-game winnings (triggered in-round or bought) included |
 | `beted_at` | integer | Bet time, Unix seconds |
 | `settled_at` | integer | Settlement time, Unix seconds |
 </Card>
@@ -139,6 +140,6 @@ Returns the amount the `/player/bet` with the same `sn` actually debited. The `s
 
 ## Constraints {#constraints}
 
-1. `TOURNAMENT` and `SCRATCH_CARD` are in neither `/game/list` nor `/bet_rec/query`. They must not be rejected on that basis.
+1. `/player/win` must not be rejected because no matching `/player/bet` is found, because `game_code` is not in `/game/list`, or because `sn` is not in `/bet_rec/query`. `TOURNAMENT`, `SCRATCH_CARD` and granted spins have no preceding `/player/bet`; `TOURNAMENT` and `SCRATCH_CARD` are in neither `/game/list` nor `/bet_rec/query`.
 2. `/player/refund`: verify by `sn` that the bet was actually debited. Credit `amount` back only if it was debited and not yet refunded; if it was never debited (bet not received, or rejected with an error `code`) or already refunded, return `OK` and do not credit.
-3. Granted-spin consumption sends no `/player/bet`. Settlement may still send `/player/win` (`amount` may be 0). See [Granted spins](/en/free-round).
+3. Granted-spin consumption sends no `/player/bet`. Settlement may still send `/player/win` (`amount` may be 0), with `sn` and `game_code` in the same shape as an ordinary bet. See [Granted spins](/en/free-round).

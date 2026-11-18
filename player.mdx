@@ -7,7 +7,7 @@ description: 建立、餘額、登入、登出。
 
 ## POST `/player/add`
 
-建立會員。幣別、JP 開關與單注上下限自該商戶代理複製。
+建立會員。幣別、JP 開關與單注上下限自該商戶代理複製。每個 `agent_acc` 僅一種幣別，開通時決定，之後不可更改；多幣別須各用一組 `agent_acc`（各有 ApiKey 與 IP 白名單）。
 
 <Card title="請求" icon="arrow-up-from-bracket">
 | 欄位 | 必填 | 型別 | 說明 |
